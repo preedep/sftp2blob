@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     python3-dev \
     py3-pip \
     py3-virtualenv \
-    curl
+    curl \
+    jq
 
 # Create a virtual environment and install Azure CLI
 RUN python3 -m venv /opt/venv && \
@@ -29,7 +30,8 @@ RUN apk add --no-cache \
     openssh-client \
     lftp \
     ca-certificates \
-    libc6-compat
+    libc6-compat \
+    jq
 
 # Copy the virtual environment from the build stage
 COPY --from=build-stage /opt/venv /opt/venv

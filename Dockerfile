@@ -1,8 +1,8 @@
 # Stage 1: Build Stage
-FROM alpine:latest AS build-stage
+FROM alpine:3.18 AS build-stage
 
-# Install necessary build packages
-RUN apk add --no-cache \
+# Install necessary build packages and clean up afterwards
+RUN apk add --no-cache --virtual .build-deps \
     gcc \
     musl-dev \
     linux-headers \
@@ -10,19 +10,16 @@ RUN apk add --no-cache \
     py3-pip \
     py3-virtualenv \
     curl \
-    jq
-
-# Create a virtual environment and install Azure CLI
-RUN python3 -m venv /opt/venv && \
-    . /opt/venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install azure-cli
-
-# Install azcopy (download, extract, and leave it in the temporary directory)
-RUN curl -L https://aka.ms/downloadazcopy-v10-linux | tar -xz -C /tmp
+    jq \
+    && python3 -m venv /opt/venv \
+    && . /opt/venv/bin/activate \
+    && pip install --upgrade pip \
+    && pip install azure-cli \
+    && curl -L https://aka.ms/downloadazcopy-v10-linux | tar -xz -C /tmp \
+    && apk del .build-deps
 
 # Stage 2: Runtime Stage
-FROM alpine:latest
+FROM alpine:3.18
 
 # Install runtime dependencies only
 RUN apk add --no-cache \

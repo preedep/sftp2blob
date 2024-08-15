@@ -125,47 +125,66 @@ print_debug_info() {
     echo "  SFTP_PASSWORD: (hidden for security)"
     echo ""
 }
-# Function to log in with a specific user-assigned managed identity
 login_with_managed_identity() {
     local client_id=$1
+    local login_output
+    local verbose=${2:-false}
 
-    # Log in using the user-assigned managed identity's Client ID
-    az login --identity --username "$client_id" --allow-no-subscriptions 2>&1
-    # shellcheck disable=SC2181
+    if [ "$verbose" == true ]; then
+        echo "Attempting to log in with managed identity Client ID: $client_id"
+    fi
+
+    # Log in using the user-assigned managed identity's Client ID and capture output
+    login_output=$(az login --identity --username "$client_id" --allow-no-subscriptions 2>&1)
+
+    # Check if the login was successful
     if [ $? -ne 0 ]; then
         echo "Error: Failed to log in with the managed identity Client ID '$client_id'."
+        echo "Azure CLI error: $login_output"
         exit 1
+    fi
+
+    if [ "$verbose" == true ]; then
+        echo "Successfully logged in with managed identity Client ID: $client_id"
     fi
 }
 
 get_secret_from_key_vault() {
     local secret_name=$1
-    local secret_value
     local command_output
     local command_error
+    local verbose=${2:-false}
+
+    if [ "$verbose" == true ]; then
+        echo "Retrieving secret '$secret_name' from Key Vault '$KEY_VAULT_NAME' using Managed Identity '$MANAGED_IDENTITY_CLIENT_ID'."
+    fi
 
     # Log in using the specified managed identity
-    login_with_managed_identity "$MANAGED_IDENTITY_CLIENT_ID"
+    login_with_managed_identity "$MANAGED_IDENTITY_CLIENT_ID" "$verbose"
 
     # Attempt to retrieve the secret, capturing stdout and stderr separately
     command_output=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv 2> >(command_error=$(cat); typeset -p command_error > /dev/null))
 
     # Check if the command was successful
-    if [[ $? -ne 0 ]]; then
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
         if [[ "$command_error" == *"Forbidden"* ]]; then
             echo "Error: Access to secret '$secret_name' in Key Vault '$KEY_VAULT_NAME' is forbidden."
             echo "Please ensure that the managed identity has the correct permissions."
         else
-            echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
             echo "Azure CLI error: $command_error"
         fi
         exit 1
     fi
 
     # Ensure the output is not empty and does not contain unexpected data
-    if [[ -z "$command_output" || "$command_output" == *"{"* ]]; then
+    if [[ -z "$command_output" || "$command_output" == *"{"* || "$command_output" == *"["* ]]; then
         echo "Error: Retrieved value for '$secret_name' appears to be invalid or empty."
         exit 1
+    fi
+
+    if [ "$verbose" == true ]; then
+        echo "Successfully retrieved secret '$secret_name'."
     fi
 
     # Return the retrieved secret value

@@ -1,6 +1,6 @@
 # SFTP2Blob - A simple shell script (Linux) to copy files from SFTP to Azure Blob Storage
 
-This script is a simple shell script that copies files from SFTP or FTPs to Azure Blob Storage. 
+This script is a simple shell script that copies files from SFTP or FTPs or FTP to Azure Blob Storage. 
 It uses the `sftp` or `lftp` command to connect to the SFTP server and `azcopy` to copy files to Azure Blob Storage.
 
 ## Diagram
@@ -16,7 +16,29 @@ sequenceDiagram
 ```bash
 ./sftp2blob.sh --help
 ```
-Example usage: Environment variables
+```chatinput
+Usage: ./sftp2blob.sh --protocol {sftp|ftps|ftp} --host SFTP_HOST --port SFTP_PORT --remote REMOTE_FILE_PATH --local LOCAL_FILE_PATH --storage-account AZURE_STORAGE_ACCOUNT --container AZURE_CONTAINER_NAME --blob AZURE_BLOB_NAME --vault KEY_VAULT_NAME --username-secret SFTP_USERNAME_SECRET_NAME --password-secret SFTP_PASSWORD_SECRET_NAME --identity MANAGED_IDENTITY_CLIENT_ID
+
+Parameters:
+  --protocol               Specify the transfer protocol to use (SFTP, FTPS, or FTP).
+  --host                   (Optional) SFTP/FTPS/FTP host. Can also be set as environment variable.
+  --port                   (Optional) SFTP/FTPS/FTP port. Can also be set as environment variable.
+  --remote                 (Optional) Remote file path on SFTP/FTPS/FTP server. Can also be set as environment variable.
+  --local                  (Optional) Local file path to store the downloaded file. Can also be set as environment variable.
+  --storage-account        (Optional) Azure Storage account name. Can also be set as environment variable.
+  --container              (Optional) Azure Blob container name. Can also be set as environment variable.
+  --blob                   (Optional) Azure Blob name. Can also be set as environment variable.
+  --vault                  (Optional) Azure Key Vault name. Can also be set as environment variable.
+  --username-secret        (Optional) Secret name for SFTP/FTPS/FTP username in Key Vault. Can also be set as environment variable.
+  --password-secret        (Optional) Secret name for SFTP/FTPS/FTP password in Key Vault. Can also be set as environment variable.
+  --identity               (Optional) Client ID of the Managed Identity. Can also be set as environment variable.
+
+Examples:
+  ./sftp2blob.sh --protocol sftp
+  ./sftp2blob.sh --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path
+  ./sftp2blob.sh --help
+```
+Example usage: Environment variables (combine with command line arguments)
 ```bash
 export SFTP_HOST="new-host.example.com"
 export SFTP_PORT="2222"

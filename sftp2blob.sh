@@ -150,9 +150,15 @@ get_secret_from_key_vault() {
     secret_value=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv 2>&1)
 
     # Check if the command was successful
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
-        echo "Azure CLI error: $secret_value"
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        if [[ "$secret_value" == *"Forbidden"* ]]; then
+            echo "Error: Access to secret '$secret_name' in Key Vault '$KEY_VAULT_NAME' is forbidden."
+            echo "Please ensure that the managed identity has the correct permissions."
+        else
+            echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
+            echo "Azure CLI error: $secret_value"
+        fi
         exit 1
     fi
 

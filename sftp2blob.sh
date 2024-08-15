@@ -178,6 +178,25 @@ if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
     exit 1
 fi
 
+# Reject if SFTP_USER is in JSON format
+echo "$SFTP_USER" | jq empty > /dev/null 2>&1
+# shellcheck disable=SC2181
+if [ $? -eq 0 ]; then
+    echo "SFTP_USER should not be in JSON format. Exiting."
+    echo "$SFTP_USER"
+    exit 1
+fi
+
+# Reject if SFTP_PASSWORD is in JSON format
+echo "$SFTP_PASSWORD" | jq empty > /dev/null 2>&1
+# shellcheck disable=SC2181
+if [ $? -eq 0 ]; then
+    echo "SFTP_PASSWORD should not be in JSON format. Exiting."
+    echo "$SFTP_PASSWORD"
+    exit 1
+fi
+
+
 echo "Successfully retrieved credentials from Azure Key Vault."
 
 # Function to download a file using SFTP

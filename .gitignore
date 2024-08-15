@@ -4,3 +4,4 @@
 /.idea/sftp2blob.iml
 /.idea/vcs.xml
 /example.sh
+/example_docker.sh

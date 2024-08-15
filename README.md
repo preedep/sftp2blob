@@ -173,3 +173,25 @@ Key Vault - Secrets
 
 Azure Blob Storage - Containers (Output after run script)
 ![Azure Blob Storage - Containers](imgs/blobstorage.png)
+
+## For Docker
+Build the Docker image
+```bash
+docker build -t sftp2blob-img:lasted .
+```
+
+Run the Docker container
+```bash
+docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
+    --host localhost \
+    --port 22 \
+    --remote /upload/test.csv \
+    --local test.csv \
+    --storage-account nickdevstorage003 \
+    --container datas \
+    --blob test.csv \
+    --vault nickkvdev001 \
+    --username-secret FTP-USER \
+    --password-secret FTP-PASSWORD \
+    --identity <<client-id>> of managed identity
+```

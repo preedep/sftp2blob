@@ -125,16 +125,31 @@ print_debug_info() {
     echo "  SFTP_PASSWORD: (hidden for security)"
     echo ""
 }
+# Function to log in with a specific user-assigned managed identity
+login_with_managed_identity() {
+    local client_id=$1
+
+    # Log in using the user-assigned managed identity's Client ID
+    az login --identity --username "$client_id" --allow-no-subscriptions 2>&1
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to log in with the managed identity Client ID '$client_id'."
+        exit 1
+    fi
+}
+
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {
     local secret_name=$1
     local secret_value
 
+    # Log in using the specified managed identity
+    login_with_managed_identity "$MANAGED_IDENTITY_CLIENT_ID"
+
     # Attempt to retrieve the secret
-    secret_value=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv --identity "$MANAGED_IDENTITY_CLIENT_ID" 2>&1)
+    secret_value=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv 2>&1)
 
     # Check if the command was successful
-    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
         echo "Azure CLI error: $secret_value"

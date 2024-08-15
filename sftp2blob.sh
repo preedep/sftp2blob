@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Help function
-# Help function
 print_help() {
     echo "Usage: $0 --protocol {sftp|ftps} --host SFTP_HOST --port SFTP_PORT --remote REMOTE_FILE_PATH --local LOCAL_FILE_PATH --storage-account AZURE_STORAGE_ACCOUNT --container AZURE_CONTAINER_NAME --blob AZURE_BLOB_NAME --vault KEY_VAULT_NAME --username-secret SFTP_USERNAME_SECRET_NAME --password-secret SFTP_PASSWORD_SECRET_NAME --identity MANAGED_IDENTITY_CLIENT_ID"
     echo ""
@@ -24,7 +23,6 @@ print_help() {
     echo "  $0 --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path"
     echo "  $0 --help"
 }
-
 
 # Configuration
 # File transfer - SFTP or FTPs

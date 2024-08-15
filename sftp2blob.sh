@@ -138,10 +138,8 @@ login_with_managed_identity() {
     fi
 }
 
-# Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {
     local secret_name=$1
-    # shellcheck disable=SC2034
     local secret_value
     local command_output
     local command_error
@@ -153,9 +151,7 @@ get_secret_from_key_vault() {
     command_output=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv 2> >(command_error=$(cat); typeset -p command_error > /dev/null))
 
     # Check if the command was successful
-    # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
-        # shellcheck disable=SC2031
         if [[ "$command_error" == *"Forbidden"* ]]; then
             echo "Error: Access to secret '$secret_name' in Key Vault '$KEY_VAULT_NAME' is forbidden."
             echo "Please ensure that the managed identity has the correct permissions."
@@ -165,42 +161,36 @@ get_secret_from_key_vault() {
         fi
         exit 1
     fi
-    echo "Successfully retrieved credentials from Azure Key Vault."
-    # Return the retrieved secret
+
+    # Ensure the output is not empty and does not contain unexpected data
+    if [[ -z "$command_output" || "$command_output" == *"{"* ]]; then
+        echo "Error: Retrieved value for '$secret_name' appears to be invalid or empty."
+        exit 1
+    fi
+
+    # Return the retrieved secret value
     echo "$command_output"
 }
 
+get_and_validate_user_sftp() {
+    # Get FTP/SFTP/FTPS credentials from Azure Key Vault
+    SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
+    SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
 
-get_and_validate_user_sftp(){
-  # Get FTP/SFTP/FTPS credentials from Azure Key Vault
-  SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
-  SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
+    # Debugging: Print all values
+    print_debug_info
 
-  # Debugging: Print all values
-  print_debug_info
-  # Check if credentials were retrieved
-  if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
-      echo "Failed to retrieve credentials from Azure Key Vault."
-      exit 1
-  fi
+    # Check if credentials were retrieved
+    if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
+        echo "Failed to retrieve credentials from Azure Key Vault."
+        exit 1
+    fi
 
-  # Reject if SFTP_USER is in JSON format
-  echo "$SFTP_USER" | jq empty > /dev/null 2>&1
-  # shellcheck disable=SC2181
-  if [ $? -eq 0 ]; then
-      echo "SFTP_USER should not be in JSON format. Exiting."
-      echo "$SFTP_USER"
-      exit 1
-  fi
-
-  # Reject if SFTP_PASSWORD is in JSON format
-  echo "$SFTP_PASSWORD" | jq empty > /dev/null 2>&1
-  # shellcheck disable=SC2181
-  if [ $? -eq 0 ]; then
-      echo "SFTP_PASSWORD should not be in JSON format. Exiting."
-      echo "$SFTP_PASSWORD"
-      exit 1
-  fi
+    # Ensure SFTP_USER and SFTP_PASSWORD are not in JSON format
+    if [[ "$SFTP_USER" == *"{"* ]] || [[ "$SFTP_PASSWORD" == *"{"* ]]; then
+        echo "Error: Credentials retrieved from Azure Key Vault are not valid (appears to be in JSON format)."
+        exit 1
+    fi
 }
 
 # Function to download a file using SFTP

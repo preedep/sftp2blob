@@ -177,6 +177,10 @@ get_and_validate_user_sftp() {
     SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
     SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
 
+    echo "$SFTP_USER"
+    echo "$SFTP_PASSWORD"
+
+
     # Debugging: Print all values
     print_debug_info
 

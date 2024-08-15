@@ -49,3 +49,28 @@ export MANAGED_IDENTITY_CLIENT_ID="your-managed-identity-client-id"
 - [sftp](https://linuxize.com/post/how-to-use-linux-sftp-command-to-transfer-files/)
 - Azure Blob Storage account
 - Azure Key Vault (store the SFTP/FTPs user/password)
+
+
+## Azure CLI (Add extensions)
+For this script will add all available extensions to the Azure CLI.
+```bash
+for extension in $(az extension list-available --query "[].name" -o tsv); do
+  az extension add --name $extension
+done
+```
+
+## Example for run shell script
+```bash
+./sftp2blob.sh --protocol ftp \
+    --host localhost \
+    --port 22 \
+    --remote /upload/test.csv \
+    --local test.csv \
+    --storage-account nickdevstorage003 \
+    --container datas \
+    --blob test.csv \
+    --vault nickkvdev001 \
+    --username-secret FTP-USER \
+    --password-secret FTP-PASSWORD \
+    --identity <<client-id>> of managed identity
+```

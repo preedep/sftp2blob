@@ -109,12 +109,12 @@ done
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {
     local secret_name=$1
-    az keyvault secret show --name $secret_name --vault-name $KEY_VAULT_NAME --query value --output tsv --identity $MANAGED_IDENTITY_CLIENT_ID
+    az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv --identity "$MANAGED_IDENTITY_CLIENT_ID"
 }
 
 # Get FTP/SFTP/FTPS credentials from Azure Key Vault
-SFTP_USER=$(get_secret_from_key_vault $SFTP_USERNAME_SECRET_NAME)
-SFTP_PASSWORD=$(get_secret_from_key_vault $SFTP_PASSWORD_SECRET_NAME)
+SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
+SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
 
 # Check if credentials were retrieved
 if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
@@ -127,7 +127,7 @@ echo "Successfully retrieved credentials from Azure Key Vault."
 # Function to download a file using SFTP
 download_from_sftp() {
     echo "Downloading file from SFTP..."
-    sftp -P $SFTP_PORT $SFTP_USER@$SFTP_HOST <<EOF
+    sftp -P "$SFTP_PORT" "$SFTP_USER"@"$SFTP_HOST" <<EOF
 get $REMOTE_FILE_PATH $LOCAL_FILE_PATH
 bye
 EOF
@@ -140,7 +140,7 @@ EOF
 # Function to download a file using FTPS
 download_from_ftps() {
     echo "Downloading file from FTPS..."
-    lftp -u $SFTP_USER,$SFTP_PASSWORD -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftps://$SFTP_HOST
+    lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftps://"$SFTP_HOST"
     if [ $? -ne 0 ]; then
         echo "Failed to download file from FTPS."
         exit 1
@@ -150,7 +150,8 @@ download_from_ftps() {
 # Function to download a file using FTP
 download_from_ftp() {
     echo "Downloading file from FTP..."
-    lftp -u $SFTP_USER,$SFTP_PASSWORD -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://$SFTP_HOST
+    # shellcheck disable=SC2086
+    lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://"$SFTP_HOST"
     if [ $? -ne 0 ]; then
         echo "Failed to download file from FTP."
         exit 1
@@ -183,6 +184,6 @@ fi
 upload_to_azure_blob
 
 # Cleanup (optional)
-rm -f $LOCAL_FILE_PATH
+rm -f "$LOCAL_FILE_PATH"
 
 echo "File transfer completed successfully."

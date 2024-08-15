@@ -134,6 +134,7 @@ get_secret_from_key_vault() {
     secret_value=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv --identity "$MANAGED_IDENTITY_CLIENT_ID" 2>&1)
 
     # Check if the command was successful
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
         echo "Azure CLI error: $secret_value"
@@ -165,6 +166,7 @@ download_from_sftp() {
 get $REMOTE_FILE_PATH $LOCAL_FILE_PATH
 bye
 EOF
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Failed to download file from SFTP."
         exit 1
@@ -175,6 +177,7 @@ EOF
 download_from_ftps() {
     echo "Downloading file from FTPS..."
     lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftps://"$SFTP_HOST"
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Failed to download file from FTPS."
         exit 1
@@ -186,6 +189,7 @@ download_from_ftp() {
     echo "Downloading file from FTP..."
     # shellcheck disable=SC2086
     lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://"$SFTP_HOST"
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Failed to download file from FTP."
         exit 1
@@ -196,6 +200,7 @@ download_from_ftp() {
 upload_to_azure_blob() {
     echo "Uploading file to Azure Blob Storage..."
     azcopy copy "$LOCAL_FILE_PATH" "https://$AZURE_STORAGE_ACCOUNT.blob.core.windows.net/$AZURE_CONTAINER_NAME/$AZURE_BLOB_NAME" --from-to=LocalBlob --auth-mode=MSI --identity="$MANAGED_IDENTITY_CLIENT_ID"
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Failed to upload file to Azure Blob Storage."
         exit 1

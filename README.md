@@ -3,6 +3,15 @@
 This script is a simple shell script that copies files from SFTP or FTPs to Azure Blob Storage. 
 It uses the `sftp` or `lftp` command to connect to the SFTP server and `azcopy` to copy files to Azure Blob Storage.
 
+## Diagram
+```mermaid
+sequenceDiagram
+    SFTP2BLOB->>AZURE_KEY_VAULT: Get User and Password with AZ CLI with specific managed identity
+    SFTP2BLOB-->>FTP_SERVER: Get File and Authen with User and Password
+    SFTP2BLOB-->>SFTP2BLOB: Save Data to Local
+    SFTP2BLOB-->>CALL_AZ_COPY: Run AZ Copy with specific managed identity
+```
+
 ## Usage
 ```bash
 ./sftp2blob.sh --help

@@ -47,6 +47,7 @@ export MANAGED_IDENTITY_CLIENT_ID="your-managed-identity-client-id"
 - [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
 - [lftp](https://lftp.yar.ru/)
 - [sftp](https://linuxize.com/post/how-to-use-linux-sftp-command-to-transfer-files/)
+- [jq](https://stedolan.github.io/jq/)
 - Azure Blob Storage account
 - Azure Key Vault (store the SFTP/FTPs user/password)
 

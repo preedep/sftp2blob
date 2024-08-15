@@ -259,12 +259,25 @@ download_from_ftp() {
 # Function to upload a file to Azure Blob Storage using azcopy
 upload_to_azure_blob() {
     echo "Uploading file to Azure Blob Storage..."
-    azcopy copy "$LOCAL_FILE_PATH" "https://$AZURE_STORAGE_ACCOUNT.blob.core.windows.net/$AZURE_CONTAINER_NAME/$AZURE_BLOB_NAME" --from-to=LocalBlob --auth-mode=MSI --identity="$MANAGED_IDENTITY_CLIENT_ID"
+
+    # Log in to Azure using Managed Identity
+    azcopy login --identity --identity-client-id "$MANAGED_IDENTITY_CLIENT_ID"
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ]; then
+        echo "Failed to log in to Azure using Managed Identity."
+        exit 1
+    fi
+
+    # Copy the file to Azure Blob Storage
+    azcopy copy "$LOCAL_FILE_PATH" "https://$AZURE_STORAGE_ACCOUNT.blob.core.windows.net/$AZURE_CONTAINER_NAME/$AZURE_BLOB_NAME"
     # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo "Failed to upload file to Azure Blob Storage."
         exit 1
     fi
+
+    # Logout from Azure after operation
+    azcopy logout
 }
 
 # Main script logic

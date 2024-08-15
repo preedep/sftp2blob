@@ -192,6 +192,10 @@ get_secret_from_key_vault() {
 }
 
 get_and_validate_user_sftp() {
+    # Cleanup (optional)
+    # in case the file already exists
+    rm -f "$LOCAL_FILE_PATH"
+
     # Get FTP/SFTP/FTPS credentials from Azure Key Vault
     SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
     SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")

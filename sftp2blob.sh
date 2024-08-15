@@ -1,24 +1,53 @@
 #!/bin/bash
 
+# Help function
+print_help() {
+    echo "Usage: $0 {sftp|ftps} [SFTP_HOST] [SFTP_PORT] [REMOTE_FILE_PATH] [LOCAL_FILE_PATH] [AZURE_STORAGE_ACCOUNT] [AZURE_CONTAINER_NAME] [AZURE_BLOB_NAME] [KEY_VAULT_NAME] [SFTP_USERNAME_SECRET_NAME] [SFTP_PASSWORD_SECRET_NAME] [MANAGED_IDENTITY_CLIENT_ID]"
+    echo ""
+    echo "Parameters:"
+    echo "  sftp|ftps                Specify the transfer protocol to use (SFTP or FTPS)."
+    echo "  SFTP_HOST                (Optional) SFTP/FTPS host. Can also be set as environment variable."
+    echo "  SFTP_PORT                (Optional) SFTP/FTPS port. Can also be set as environment variable."
+    echo "  REMOTE_FILE_PATH         (Optional) Remote file path on SFTP/FTPS server. Can also be set as environment variable."
+    echo "  LOCAL_FILE_PATH          (Optional) Local file path to store the downloaded file. Can also be set as environment variable."
+    echo "  AZURE_STORAGE_ACCOUNT    (Optional) Azure Storage account name. Can also be set as environment variable."
+    echo "  AZURE_CONTAINER_NAME     (Optional) Azure Blob container name. Can also be set as environment variable."
+    echo "  AZURE_BLOB_NAME          (Optional) Azure Blob name. Can also be set as environment variable."
+    echo "  KEY_VAULT_NAME           (Optional) Azure Key Vault name. Can also be set as environment variable."
+    echo "  SFTP_USERNAME_SECRET_NAME(Optional) Secret name for SFTP/FTPS username in Key Vault. Can also be set as environment variable."
+    echo "  SFTP_PASSWORD_SECRET_NAME(Optional) Secret name for SFTP/FTPS password in Key Vault. Can also be set as environment variable."
+    echo "  MANAGED_IDENTITY_CLIENT_ID(Optional) Client ID of the Managed Identity. Can also be set as environment variable."
+    echo ""
+    echo "Examples:"
+    echo "  $0 sftp"
+    echo "  $0 ftps new-host.example.com 2222 /new/remote/path /new/local/path"
+    echo "  $0 --help"
+}
+
+# Check if help is requested
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    print_help
+    exit 0
+fi
 # Configuration
 # File transfer - SFTP or FTPs
-SFTP_HOST="sftp.example.com"
-SFTP_PORT="22"
-REMOTE_FILE_PATH="/remote/path/to/your/file.txt"
-LOCAL_FILE_PATH="/local/path/to/downloaded/file.txt"
+SFTP_HOST="${SFTP_HOST:-${2:-sftp.example.com}}"
+SFTP_PORT="${SFTP_PORT:-${3:-22}}"
+REMOTE_FILE_PATH="${REMOTE_FILE_PATH:-${4:-/remote/path/to/your/file.txt}}"
+LOCAL_FILE_PATH="${LOCAL_FILE_PATH:-${5:-/local/path/to/downloaded/file.txt}}"
 
 #Azure Configuration
-AZURE_STORAGE_ACCOUNT="your_storage_account_name"
-AZURE_CONTAINER_NAME="your_container_name"
-AZURE_BLOB_NAME="your_blob_name"
+AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-${6:-your_storage_account_name}}"
+AZURE_CONTAINER_NAME="${AZURE_CONTAINER_NAME:-${7:-your_container_name}}"
+AZURE_BLOB_NAME="${AZURE_BLOB_NAME:-${8:-your_blob_name}}"
 
 #Azure Configuration - Azure Key Vault
-KEY_VAULT_NAME="your-key-vault-name"
-SFTP_USERNAME_SECRET_NAME="sftp-username-secret"
-SFTP_PASSWORD_SECRET_NAME="sftp-password-secret"
+KEY_VAULT_NAME="${KEY_VAULT_NAME:-${9:-your-key-vault-name}}"
+SFTP_USERNAME_SECRET_NAME="${SFTP_USERNAME_SECRET_NAME:-${10:-sftp-username-secret}}"
+SFTP_PASSWORD_SECRET_NAME="${SFTP_PASSWORD_SECRET_NAME:-${11:-sftp-password-secret}}"
 
 #Azure Configuration - Specific Managed Identity 
-MANAGED_IDENTITY_CLIENT_ID="your-managed-identity-client-id"
+MANAGED_IDENTITY_CLIENT_ID="${MANAGED_IDENTITY_CLIENT_ID:-${12:-your-managed-identity-client-id}}"
 
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {

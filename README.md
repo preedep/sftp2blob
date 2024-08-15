@@ -5,9 +5,21 @@ It uses the `sftp` or `lftp` command to connect to the SFTP server and `azcopy` 
 
 ## Usage
 ```bash
-./sftp2blob.sh sftp|ftps
+./sftp2blob.sh --help
 ```
-## Configuration
+Example usage: Environment variables
+```bash
+export SFTP_HOST="new-host.example.com"
+export SFTP_PORT="2222"
+./sftp2blob.sh sftp
+```
+
+Example usage: Command line arguments
+```bash
+./sftp2blob.sh sftp new-host.example.com 2222 /new/remote/path /new/local/path
+````
+
+## Configuration Environment Variables
 The script uses the following environment variables to configure the SFTP/FTPs and Azure Blob Storage connection:
 
 ```bash

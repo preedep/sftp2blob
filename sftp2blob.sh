@@ -106,6 +106,25 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Debugging: Print all values
+print_debug_info() {
+    echo "Debug Information:"
+    echo "  PROTOCOL: $PROTOCOL"
+    echo "  SFTP_HOST: $SFTP_HOST"
+    echo "  SFTP_PORT: $SFTP_PORT"
+    echo "  REMOTE_FILE_PATH: $REMOTE_FILE_PATH"
+    echo "  LOCAL_FILE_PATH: $LOCAL_FILE_PATH"
+    echo "  AZURE_STORAGE_ACCOUNT: $AZURE_STORAGE_ACCOUNT"
+    echo "  AZURE_CONTAINER_NAME: $AZURE_CONTAINER_NAME"
+    echo "  AZURE_BLOB_NAME: $AZURE_BLOB_NAME"
+    echo "  KEY_VAULT_NAME: $KEY_VAULT_NAME"
+    echo "  SFTP_USERNAME_SECRET_NAME: $SFTP_USERNAME_SECRET_NAME"
+    echo "  SFTP_PASSWORD_SECRET_NAME: $SFTP_PASSWORD_SECRET_NAME"
+    echo "  MANAGED_IDENTITY_CLIENT_ID: $MANAGED_IDENTITY_CLIENT_ID"
+    echo "  SFTP_USER: $SFTP_USER"
+    echo "  SFTP_PASSWORD: (hidden for security)"
+    echo ""
+}
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {
     local secret_name=$1
@@ -115,6 +134,9 @@ get_secret_from_key_vault() {
 # Get FTP/SFTP/FTPS credentials from Azure Key Vault
 SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
 SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
+
+# Debugging: Print all values
+print_debug_info
 
 # Check if credentials were retrieved
 if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then

@@ -165,47 +165,48 @@ get_secret_from_key_vault() {
         fi
         exit 1
     fi
-
+    echo "Successfully retrieved credentials from Azure Key Vault."
     # Return the retrieved secret
     echo "$command_output"
 }
-# Get FTP/SFTP/FTPS credentials from Azure Key Vault
-SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
-SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
-
-# Debugging: Print all values
-print_debug_info
-
-# Check if credentials were retrieved
-if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
-    echo "Failed to retrieve credentials from Azure Key Vault."
-    exit 1
-fi
-
-# Reject if SFTP_USER is in JSON format
-echo "$SFTP_USER" | jq empty > /dev/null 2>&1
-# shellcheck disable=SC2181
-if [ $? -eq 0 ]; then
-    echo "SFTP_USER should not be in JSON format. Exiting."
-    echo "$SFTP_USER"
-    exit 1
-fi
-
-# Reject if SFTP_PASSWORD is in JSON format
-echo "$SFTP_PASSWORD" | jq empty > /dev/null 2>&1
-# shellcheck disable=SC2181
-if [ $? -eq 0 ]; then
-    echo "SFTP_PASSWORD should not be in JSON format. Exiting."
-    echo "$SFTP_PASSWORD"
-    exit 1
-fi
 
 
-echo "Successfully retrieved credentials from Azure Key Vault."
+get_and_validate_user_sftp(){
+  # Get FTP/SFTP/FTPS credentials from Azure Key Vault
+  SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
+  SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")
+
+  # Debugging: Print all values
+  print_debug_info
+  # Check if credentials were retrieved
+  if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
+      echo "Failed to retrieve credentials from Azure Key Vault."
+      exit 1
+  fi
+
+  # Reject if SFTP_USER is in JSON format
+  echo "$SFTP_USER" | jq empty > /dev/null 2>&1
+  # shellcheck disable=SC2181
+  if [ $? -eq 0 ]; then
+      echo "SFTP_USER should not be in JSON format. Exiting."
+      echo "$SFTP_USER"
+      exit 1
+  fi
+
+  # Reject if SFTP_PASSWORD is in JSON format
+  echo "$SFTP_PASSWORD" | jq empty > /dev/null 2>&1
+  # shellcheck disable=SC2181
+  if [ $? -eq 0 ]; then
+      echo "SFTP_PASSWORD should not be in JSON format. Exiting."
+      echo "$SFTP_PASSWORD"
+      exit 1
+  fi
+}
 
 # Function to download a file using SFTP
 download_from_sftp() {
     echo "Downloading file from SFTP..."
+    get_secret_from_key_vault
     sftp -P "$SFTP_PORT" "$SFTP_USER"@"$SFTP_HOST" <<EOF
 get $REMOTE_FILE_PATH $LOCAL_FILE_PATH
 bye
@@ -220,6 +221,7 @@ EOF
 # Function to download a file using FTPS
 download_from_ftps() {
     echo "Downloading file from FTPS..."
+    get_and_validate_user_sftp
     lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftps://"$SFTP_HOST"
     # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
@@ -231,6 +233,7 @@ download_from_ftps() {
 # Function to download a file using FTP
 download_from_ftp() {
     echo "Downloading file from FTP..."
+    get_and_validate_user_sftp
     # shellcheck disable=SC2086
     lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://"$SFTP_HOST"
     # shellcheck disable=SC2181

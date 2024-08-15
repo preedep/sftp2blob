@@ -195,7 +195,7 @@ docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
     --password-secret FTP-PASSWORD \
     --identity <<client-id>> of managed identity
 ```
-Run the Docker container (with environment variables)
+Run the Docker container (with environment variables) #1
 ```bash
 docker run -it --rm --name sftp2blob \
     -e SFTP_HOST=localhost \
@@ -210,4 +210,22 @@ docker run -it --rm --name sftp2blob \
     -e SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD \
     -e MANAGED_IDENTITY_CLIENT_ID=<<client-id>> \
     sftp2blob-img:latest
+```
+Run the Docker container (with environment variables) #2
+```bash
+# Set the environment variables
+export SFTP_HOST=localhost
+export SFTP_PORT=22
+export REMOTE_FILE_PATH=/upload/test.csv
+export LOCAL_FILE_PATH=test.csv
+export AZURE_STORAGE_ACCOUNT=nickdevstorage003
+export AZURE_CONTAINER_NAME=datas
+export AZURE_BLOB_NAME=test.csv
+export KEY_VAULT_NAME=nickkvdev001
+export SFTP_USERNAME_SECRET_NAME=FTP-USER
+export SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD
+export MANAGED_IDENTITY_CLIENT_ID=<<client-id>>
+
+# Run the Docker container
+docker run -it --rm --name sftp2blob sftp2blob-img:latest
 ```

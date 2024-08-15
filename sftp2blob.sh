@@ -2,20 +2,20 @@
 
 # Help function
 print_help() {
-    echo "Usage: $0 --protocol {sftp|ftps} --host SFTP_HOST --port SFTP_PORT --remote REMOTE_FILE_PATH --local LOCAL_FILE_PATH --storage-account AZURE_STORAGE_ACCOUNT --container AZURE_CONTAINER_NAME --blob AZURE_BLOB_NAME --vault KEY_VAULT_NAME --username-secret SFTP_USERNAME_SECRET_NAME --password-secret SFTP_PASSWORD_SECRET_NAME --identity MANAGED_IDENTITY_CLIENT_ID"
+    echo "Usage: $0 --protocol {sftp|ftps|ftp} --host SFTP_HOST --port SFTP_PORT --remote REMOTE_FILE_PATH --local LOCAL_FILE_PATH --storage-account AZURE_STORAGE_ACCOUNT --container AZURE_CONTAINER_NAME --blob AZURE_BLOB_NAME --vault KEY_VAULT_NAME --username-secret SFTP_USERNAME_SECRET_NAME --password-secret SFTP_PASSWORD_SECRET_NAME --identity MANAGED_IDENTITY_CLIENT_ID"
     echo ""
     echo "Parameters:"
-    echo "  --protocol               Specify the transfer protocol to use (SFTP or FTPS)."
-    echo "  --host                   (Optional) SFTP/FTPS host. Can also be set as environment variable."
-    echo "  --port                   (Optional) SFTP/FTPS port. Can also be set as environment variable."
-    echo "  --remote                 (Optional) Remote file path on SFTP/FTPS server. Can also be set as environment variable."
+    echo "  --protocol               Specify the transfer protocol to use (SFTP, FTPS, or FTP)."
+    echo "  --host                   (Optional) SFTP/FTPS/FTP host. Can also be set as environment variable."
+    echo "  --port                   (Optional) SFTP/FTPS/FTP port. Can also be set as environment variable."
+    echo "  --remote                 (Optional) Remote file path on SFTP/FTPS/FTP server. Can also be set as environment variable."
     echo "  --local                  (Optional) Local file path to store the downloaded file. Can also be set as environment variable."
     echo "  --storage-account        (Optional) Azure Storage account name. Can also be set as environment variable."
     echo "  --container              (Optional) Azure Blob container name. Can also be set as environment variable."
     echo "  --blob                   (Optional) Azure Blob name. Can also be set as environment variable."
     echo "  --vault                  (Optional) Azure Key Vault name. Can also be set as environment variable."
-    echo "  --username-secret        (Optional) Secret name for SFTP/FTPS username in Key Vault. Can also be set as environment variable."
-    echo "  --password-secret        (Optional) Secret name for SFTP/FTPS password in Key Vault. Can also be set as environment variable."
+    echo "  --username-secret        (Optional) Secret name for SFTP/FTPS/FTP username in Key Vault. Can also be set as environment variable."
+    echo "  --password-secret        (Optional) Secret name for SFTP/FTPS/FTP password in Key Vault. Can also be set as environment variable."
     echo "  --identity               (Optional) Client ID of the Managed Identity. Can also be set as environment variable."
     echo ""
     echo "Examples:"
@@ -25,25 +25,23 @@ print_help() {
 }
 
 # Configuration
-# File transfer - SFTP or FTPs
-SFTP_HOST="${SFTP_HOST:-${2:-sftp.example.com}}"
-SFTP_PORT="${SFTP_PORT:-${3:-22}}"
+SFTP_HOST="${SFTP_HOST:-${2:-ftp.example.com}}"
+SFTP_PORT="${SFTP_PORT:-${3:-21}}"
 REMOTE_FILE_PATH="${REMOTE_FILE_PATH:-${4:-/remote/path/to/your/file.txt}}"
 LOCAL_FILE_PATH="${LOCAL_FILE_PATH:-${5:-/local/path/to/downloaded/file.txt}}"
 
-#Azure Configuration
+# Azure Configuration
 AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-${6:-your_storage_account_name}}"
 AZURE_CONTAINER_NAME="${AZURE_CONTAINER_NAME:-${7:-your_container_name}}"
 AZURE_BLOB_NAME="${AZURE_BLOB_NAME:-${8:-your_blob_name}}"
 
-#Azure Configuration - Azure Key Vault
+# Azure Configuration - Azure Key Vault
 KEY_VAULT_NAME="${KEY_VAULT_NAME:-${9:-your-key-vault-name}}"
-SFTP_USERNAME_SECRET_NAME="${SFTP_USERNAME_SECRET_NAME:-${10:-sftp-username-secret}}"
-SFTP_PASSWORD_SECRET_NAME="${SFTP_PASSWORD_SECRET_NAME:-${11:-sftp-password-secret}}"
+SFTP_USERNAME_SECRET_NAME="${SFTP_USERNAME_SECRET_NAME:-${10:-ftp-username-secret}}"
+SFTP_PASSWORD_SECRET_NAME="${SFTP_PASSWORD_SECRET_NAME:-${11:-ftp-password-secret}}"
 
-#Azure Configuration - Specific Managed Identity 
+# Azure Configuration - Specific Managed Identity
 MANAGED_IDENTITY_CLIENT_ID="${MANAGED_IDENTITY_CLIENT_ID:-${12:-your-managed-identity-client-id}}"
-
 
 # Parse named parameters and override environment variables or defaults
 while [[ $# -gt 0 ]]; do
@@ -114,13 +112,13 @@ get_secret_from_key_vault() {
     az keyvault secret show --name $secret_name --vault-name $KEY_VAULT_NAME --query value --output tsv --identity $MANAGED_IDENTITY_CLIENT_ID
 }
 
-# Get SFTP/FTPS credentials from Azure Key Vault
+# Get FTP/SFTP/FTPS credentials from Azure Key Vault
 SFTP_USER=$(get_secret_from_key_vault $SFTP_USERNAME_SECRET_NAME)
 SFTP_PASSWORD=$(get_secret_from_key_vault $SFTP_PASSWORD_SECRET_NAME)
 
 # Check if credentials were retrieved
 if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
-    echo "Failed to retrieve SFTP credentials from Azure Key Vault."
+    echo "Failed to retrieve credentials from Azure Key Vault."
     exit 1
 fi
 
@@ -149,6 +147,16 @@ download_from_ftps() {
     fi
 }
 
+# Function to download a file using FTP
+download_from_ftp() {
+    echo "Downloading file from FTP..."
+    lftp -u $SFTP_USER,$SFTP_PASSWORD -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://$SFTP_HOST
+    if [ $? -ne 0 ]; then
+        echo "Failed to download file from FTP."
+        exit 1
+    fi
+}
+
 # Function to upload a file to Azure Blob Storage using azcopy
 upload_to_azure_blob() {
     echo "Uploading file to Azure Blob Storage..."
@@ -160,12 +168,15 @@ upload_to_azure_blob() {
 }
 
 # Main script logic
-if [ "$1" == "sftp" ]; then
+if [ "$PROTOCOL" == "sftp" ]; then
     download_from_sftp
-elif [ "$1" == "ftps" ]; then
+elif [ "$PROTOCOL" == "ftps" ]; then
     download_from_ftps
+elif [ "$PROTOCOL" == "ftp" ]; then
+    download_from_ftp
 else
-    echo "Usage: $0 {sftp|ftps}"
+    echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
+    print_help
     exit 1
 fi
 

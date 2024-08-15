@@ -14,6 +14,7 @@ sequenceDiagram
 ```
 
 ## Usage
+The script can combine with command line arguments and environment variables.
 ```bash
 ./sftp2blob.sh --help
 ```
@@ -39,21 +40,8 @@ Examples:
   ./sftp2blob.sh --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path
   ./sftp2blob.sh --help
 ```
-Example usage: Environment variables (combine with command line arguments)
-```bash
-export SFTP_HOST="new-host.example.com"
-export SFTP_PORT="2222"
-./sftp2blob.sh --protocol sftp
-```
-
-Example usage: Command line arguments
-```bash
-./sftp2blob.sh --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path
-````
-
-## Configuration Environment Variables
+## Environment Variables
 The script uses the following environment variables to configure the SFTP/FTPs and Azure Blob Storage connection:
-
 ```bash
 export SFTP_HOST="sftp.example.com"
 export SFTP_PORT="22"
@@ -73,6 +61,18 @@ export SFTP_PASSWORD_SECRET_NAME="sftp-password-secret"
 #Azure Configuration - Specific Managed Identity 
 export MANAGED_IDENTITY_CLIENT_ID="your-managed-identity-client-id"
 ```
+
+Example usage: Environment variables (combine with command line arguments)
+```bash
+export SFTP_HOST="new-host.example.com"
+export SFTP_PORT="2222"
+./sftp2blob.sh --protocol sftp
+```
+
+Example usage: Command line arguments
+```bash
+./sftp2blob.sh --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path
+````
 
 ## Prerequisites
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)

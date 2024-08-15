@@ -11,12 +11,12 @@ Example usage: Environment variables
 ```bash
 export SFTP_HOST="new-host.example.com"
 export SFTP_PORT="2222"
-./sftp2blob.sh sftp
+./sftp2blob.sh --protocol sftp
 ```
 
 Example usage: Command line arguments
 ```bash
-./sftp2blob.sh sftp new-host.example.com 2222 /new/remote/path /new/local/path
+./sftp2blob.sh --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path
 ````
 
 ## Configuration Environment Variables

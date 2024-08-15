@@ -177,7 +177,7 @@ Azure Blob Storage - Containers (Output after run script)
 ## For Docker
 Build the Docker image
 ```bash
-docker build -t sftp2blob-img:lasted .
+docker build -t sftp2blob-img:latest .
 ```
 
 Run the Docker container

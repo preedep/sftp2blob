@@ -128,9 +128,21 @@ print_debug_info() {
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {
     local secret_name=$1
-    az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv --identity "$MANAGED_IDENTITY_CLIENT_ID"
-}
+    local secret_value
 
+    # Attempt to retrieve the secret
+    secret_value=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv --identity "$MANAGED_IDENTITY_CLIENT_ID" 2>&1)
+
+    # Check if the command was successful
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
+        echo "Azure CLI error: $secret_value"
+        exit 1
+    fi
+
+    # Return the retrieved secret
+    echo "$secret_value"
+}
 # Get FTP/SFTP/FTPS credentials from Azure Key Vault
 SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")
 SFTP_PASSWORD=$(get_secret_from_key_vault "$SFTP_PASSWORD_SECRET_NAME")

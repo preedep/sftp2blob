@@ -1,34 +1,31 @@
 #!/bin/bash
 
 # Help function
+# Help function
 print_help() {
-    echo "Usage: $0 {sftp|ftps} [SFTP_HOST] [SFTP_PORT] [REMOTE_FILE_PATH] [LOCAL_FILE_PATH] [AZURE_STORAGE_ACCOUNT] [AZURE_CONTAINER_NAME] [AZURE_BLOB_NAME] [KEY_VAULT_NAME] [SFTP_USERNAME_SECRET_NAME] [SFTP_PASSWORD_SECRET_NAME] [MANAGED_IDENTITY_CLIENT_ID]"
+    echo "Usage: $0 --protocol {sftp|ftps} --host SFTP_HOST --port SFTP_PORT --remote REMOTE_FILE_PATH --local LOCAL_FILE_PATH --storage-account AZURE_STORAGE_ACCOUNT --container AZURE_CONTAINER_NAME --blob AZURE_BLOB_NAME --vault KEY_VAULT_NAME --username-secret SFTP_USERNAME_SECRET_NAME --password-secret SFTP_PASSWORD_SECRET_NAME --identity MANAGED_IDENTITY_CLIENT_ID"
     echo ""
     echo "Parameters:"
-    echo "  sftp|ftps                Specify the transfer protocol to use (SFTP or FTPS)."
-    echo "  SFTP_HOST                (Optional) SFTP/FTPS host. Can also be set as environment variable."
-    echo "  SFTP_PORT                (Optional) SFTP/FTPS port. Can also be set as environment variable."
-    echo "  REMOTE_FILE_PATH         (Optional) Remote file path on SFTP/FTPS server. Can also be set as environment variable."
-    echo "  LOCAL_FILE_PATH          (Optional) Local file path to store the downloaded file. Can also be set as environment variable."
-    echo "  AZURE_STORAGE_ACCOUNT    (Optional) Azure Storage account name. Can also be set as environment variable."
-    echo "  AZURE_CONTAINER_NAME     (Optional) Azure Blob container name. Can also be set as environment variable."
-    echo "  AZURE_BLOB_NAME          (Optional) Azure Blob name. Can also be set as environment variable."
-    echo "  KEY_VAULT_NAME           (Optional) Azure Key Vault name. Can also be set as environment variable."
-    echo "  SFTP_USERNAME_SECRET_NAME(Optional) Secret name for SFTP/FTPS username in Key Vault. Can also be set as environment variable."
-    echo "  SFTP_PASSWORD_SECRET_NAME(Optional) Secret name for SFTP/FTPS password in Key Vault. Can also be set as environment variable."
-    echo "  MANAGED_IDENTITY_CLIENT_ID(Optional) Client ID of the Managed Identity. Can also be set as environment variable."
+    echo "  --protocol               Specify the transfer protocol to use (SFTP or FTPS)."
+    echo "  --host                   (Optional) SFTP/FTPS host. Can also be set as environment variable."
+    echo "  --port                   (Optional) SFTP/FTPS port. Can also be set as environment variable."
+    echo "  --remote                 (Optional) Remote file path on SFTP/FTPS server. Can also be set as environment variable."
+    echo "  --local                  (Optional) Local file path to store the downloaded file. Can also be set as environment variable."
+    echo "  --storage-account        (Optional) Azure Storage account name. Can also be set as environment variable."
+    echo "  --container              (Optional) Azure Blob container name. Can also be set as environment variable."
+    echo "  --blob                   (Optional) Azure Blob name. Can also be set as environment variable."
+    echo "  --vault                  (Optional) Azure Key Vault name. Can also be set as environment variable."
+    echo "  --username-secret        (Optional) Secret name for SFTP/FTPS username in Key Vault. Can also be set as environment variable."
+    echo "  --password-secret        (Optional) Secret name for SFTP/FTPS password in Key Vault. Can also be set as environment variable."
+    echo "  --identity               (Optional) Client ID of the Managed Identity. Can also be set as environment variable."
     echo ""
     echo "Examples:"
-    echo "  $0 sftp"
-    echo "  $0 ftps new-host.example.com 2222 /new/remote/path /new/local/path"
+    echo "  $0 --protocol sftp"
+    echo "  $0 --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path"
     echo "  $0 --help"
 }
 
-# Check if help is requested
-if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-    print_help
-    exit 0
-fi
+
 # Configuration
 # File transfer - SFTP or FTPs
 SFTP_HOST="${SFTP_HOST:-${2:-sftp.example.com}}"
@@ -48,6 +45,70 @@ SFTP_PASSWORD_SECRET_NAME="${SFTP_PASSWORD_SECRET_NAME:-${11:-sftp-password-secr
 
 #Azure Configuration - Specific Managed Identity 
 MANAGED_IDENTITY_CLIENT_ID="${MANAGED_IDENTITY_CLIENT_ID:-${12:-your-managed-identity-client-id}}"
+
+
+# Parse named parameters and override environment variables or defaults
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --protocol)
+            PROTOCOL="$2"
+            shift 2
+            ;;
+        --host)
+            SFTP_HOST="$2"
+            shift 2
+            ;;
+        --port)
+            SFTP_PORT="$2"
+            shift 2
+            ;;
+        --remote)
+            REMOTE_FILE_PATH="$2"
+            shift 2
+            ;;
+        --local)
+            LOCAL_FILE_PATH="$2"
+            shift 2
+            ;;
+        --storage-account)
+            AZURE_STORAGE_ACCOUNT="$2"
+            shift 2
+            ;;
+        --container)
+            AZURE_CONTAINER_NAME="$2"
+            shift 2
+            ;;
+        --blob)
+            AZURE_BLOB_NAME="$2"
+            shift 2
+            ;;
+        --vault)
+            KEY_VAULT_NAME="$2"
+            shift 2
+            ;;
+        --username-secret)
+            SFTP_USERNAME_SECRET_NAME="$2"
+            shift 2
+            ;;
+        --password-secret)
+            SFTP_PASSWORD_SECRET_NAME="$2"
+            shift 2
+            ;;
+        --identity)
+            MANAGED_IDENTITY_CLIENT_ID="$2"
+            shift 2
+            ;;
+        --help|-h)
+            print_help
+            exit 0
+            ;;
+        *)
+            echo "Unknown parameter passed: $1"
+            print_help
+            exit 1
+            ;;
+    esac
+done
 
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {

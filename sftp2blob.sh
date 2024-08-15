@@ -141,29 +141,33 @@ login_with_managed_identity() {
 # Function to get secret from Azure Key Vault using Managed Identity
 get_secret_from_key_vault() {
     local secret_name=$1
+    # shellcheck disable=SC2034
     local secret_value
+    local command_output
+    local command_error
 
     # Log in using the specified managed identity
     login_with_managed_identity "$MANAGED_IDENTITY_CLIENT_ID"
 
-    # Attempt to retrieve the secret
-    secret_value=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv 2>&1)
+    # Attempt to retrieve the secret, capturing stdout and stderr separately
+    command_output=$(az keyvault secret show --name "$secret_name" --vault-name "$KEY_VAULT_NAME" --query value --output tsv 2> >(command_error=$(cat); typeset -p command_error > /dev/null))
 
     # Check if the command was successful
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
-        if [[ "$secret_value" == *"Forbidden"* ]]; then
+        # shellcheck disable=SC2031
+        if [[ "$command_error" == *"Forbidden"* ]]; then
             echo "Error: Access to secret '$secret_name' in Key Vault '$KEY_VAULT_NAME' is forbidden."
             echo "Please ensure that the managed identity has the correct permissions."
         else
             echo "Error: Failed to retrieve secret '$secret_name' from Key Vault '$KEY_VAULT_NAME'."
-            echo "Azure CLI error: $secret_value"
+            echo "Azure CLI error: $command_error"
         fi
         exit 1
     fi
 
     # Return the retrieved secret
-    echo "$secret_value"
+    echo "$command_output"
 }
 # Get FTP/SFTP/FTPS credentials from Azure Key Vault
 SFTP_USER=$(get_secret_from_key_vault "$SFTP_USERNAME_SECRET_NAME")

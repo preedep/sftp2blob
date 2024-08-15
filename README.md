@@ -180,7 +180,7 @@ Build the Docker image
 docker build -t sftp2blob-img:latest .
 ```
 
-Run the Docker container
+Run the Docker container (with cli arguments)
 ```bash
 docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
     --host localhost \
@@ -194,4 +194,20 @@ docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
     --username-secret FTP-USER \
     --password-secret FTP-PASSWORD \
     --identity <<client-id>> of managed identity
+```
+Run the Docker container (with environment variables)
+```bash
+docker run -it --rm --name sftp2blob \
+    -e SFTP_HOST=localhost \
+    -e SFTP_PORT=22 \
+    -e REMOTE_FILE_PATH=/upload/test.csv \
+    -e LOCAL_FILE_PATH=test.csv \
+    -e AZURE_STORAGE_ACCOUNT=nickdevstorage003 \
+    -e AZURE_CONTAINER_NAME=datas \
+    -e AZURE_BLOB_NAME=test.csv \
+    -e KEY_VAULT_NAME=nickkvdev001 \
+    -e SFTP_USERNAME_SECRET_NAME=FTP-USER \
+    -e SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD \
+    -e MANAGED_IDENTITY_CLIENT_ID=<<client-id>> \
+    sftp2blob-img:latest
 ```

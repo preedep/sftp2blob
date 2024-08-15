@@ -187,9 +187,6 @@ download_from_ftps() {
 # Function to download a file using FTP
 download_from_ftp() {
     echo "Downloading file from FTP..."
-    echo "User is $SFTP_USER"
-    echo "Password is $SFTP_PASSWORD"
-    echo "Remote file path is $REMOTE_FILE_PATH"
     # shellcheck disable=SC2086
     lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://"$SFTP_HOST"
     # shellcheck disable=SC2181

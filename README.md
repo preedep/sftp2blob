@@ -59,6 +59,11 @@ for extension in $(az extension list-available --query "[].name" -o tsv); do
   az extension add --name $extension
 done
 ```
+Or you can add the specific extensions: (ex. key vault)
+```bash
+az extension add --name keyvault
+````
+
 
 ## Example for run shell script
 This example uses the `ftp` protocol to connect to the FTP server (localhost) and copy the file `test.csv` to the Azure Blob Storage account `nickdevstorage003` and container `datas` with the blob name `test.csv`. The script uses the Azure Key Vault `nickkvdev001` to store the FTP username and password.
@@ -76,3 +81,64 @@ This example uses the `ftp` protocol to connect to the FTP server (localhost) an
     --password-secret FTP-PASSWORD \
     --identity <<client-id>> of managed identity
 ```
+Example output after running the script:
+```chatinput
+Downloading file from FTP...
+ftpuser001
+password
+Debug Information:
+  PROTOCOL: ftp
+  SFTP_HOST: localhost
+  SFTP_PORT: 22
+  REMOTE_FILE_PATH: /upload/test.csv
+  LOCAL_FILE_PATH: test.csv
+  AZURE_STORAGE_ACCOUNT: nickdevstorage003
+  AZURE_CONTAINER_NAME: datas
+  AZURE_BLOB_NAME: test.csv
+  KEY_VAULT_NAME: nickkvdev001
+  SFTP_USERNAME_SECRET_NAME: FTP-USER
+  SFTP_PASSWORD_SECRET_NAME: FTP-PASSWORD
+  MANAGED_IDENTITY_CLIENT_ID: <<client-id>> of managed identity
+  SFTP_USER: ftpuser001
+  SFTP_PASSWORD: (hidden for security)
+
+15 bytes transferred
+Uploading file to Azure Blob Storage...
+WARN: The flags --service-principal and --identity will be deprecated in a future release. Please use --login-type=SPN or --login-type=MSI instead.
+INFO: Login with identity succeeded.
+INFO: Scanning...
+INFO: Autologin not specified.
+INFO: Authenticating to destination using Azure AD
+INFO: Any empty folders will not be processed, because source and/or destination doesn't have full folder support
+
+Job 51905158-2547-7444-4945-786560fc9e54 has started
+Log file is located at: /home/azureuser/.azcopy/51905158-2547-7444-4945-786560fc9e54.log
+
+100.0 %, 1 Done, 0 Failed, 0 Pending, 0 Skipped, 1 Total, 2-sec Throughput (Mb/s): 0.0001
+
+
+Job 51905158-2547-7444-4945-786560fc9e54 summary
+Elapsed Time (Minutes): 0.0334
+Number of File Transfers: 1
+Number of Folder Property Transfers: 0
+Number of Symlink Transfers: 0
+Total Number of Transfers: 1
+Number of File Transfers Completed: 1
+Number of Folder Transfers Completed: 0
+Number of File Transfers Failed: 0
+Number of Folder Transfers Failed: 0
+Number of File Transfers Skipped: 0
+Number of Folder Transfers Skipped: 0
+Total Number of Bytes Transferred: 15
+Final Job Status: Completed
+
+INFO: Logout succeeded.
+File transfer completed successfully.
+
+```
+## From Azure Portal
+Key Vault - Secrets
+![Key Vault - Secrets](imgs/keyvault.png)
+
+Azure Blob Storage - Containers (Output after run script)
+![Azure Blob Storage - Containers](imgs/blobstorage.png)

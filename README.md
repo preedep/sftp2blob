@@ -92,11 +92,6 @@ for extension in $(az extension list-available --query "[].name" -o tsv); do
   az extension add --name $extension
 done
 ```
-Or you can add the specific extensions: (ex. key vault)
-```bash
-az extension add --name keyvault
-````
-
 
 ## Example for run shell script
 This example uses the `ftp` protocol to connect to the FTP server (localhost) and copy the file `test.csv` to the Azure Blob Storage account `nickdevstorage003` and container `datas` with the blob name `test.csv`. The script uses the Azure Key Vault `nickkvdev001` to store the FTP username and password.

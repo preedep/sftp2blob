@@ -259,59 +259,34 @@ stream_file_to_blob() {
 
     echo "Connecting to $SFTP_HOST via $PROTOCOL..."
 
-    connection_log=$(mktemp)
-    full_command="$command $options -e \"$fetch_command\""
+    # Directly stream the data and handle it based on size
+    $full_command | {
+        total_bytes=0
+        current_chunk=""
+        while IFS= read -r -d '' -n 1 byte; do
+            current_chunk+="$byte"
+            ((total_bytes++))
 
-    # Execute the command and capture the output size to determine the approach
-    output=$(eval "$full_command")
-    output_size=$(echo -n "$output" | wc -c)
-    echo "Debug: Full command output size: $output_size bytes"
+            # If the current chunk reaches the chunk size, process it
+            if [ ${#current_chunk} -ge $chunk_size ]; then
+                BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
+                BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
-    if [ -z "$output" ]; then
-        echo "Error: No data was returned by the command. Aborting."
-        exit 1
-    fi
-
-    if [ $output_size -le $chunk_size ]; then
-        # Handle small files directly without splitting
-        echo "Processing small file directly..."
-        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
-        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
-
-        echo "Uploading small file to Azure Blob Storage..."
-        echo "$output" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-    else
-        # Handle large files by splitting into chunks
-        echo "Processing large file in chunks..."
-        echo "$output" | split -b "$chunk_size" -a 6 -d - "chunk_"
-
-        # Loop through the chunk files
-        for chunk_file in chunk_*; do
-            echo "Processing chunk file: $chunk_file"
-
-            if [ ! -s "$chunk_file" ]; then
-                echo "Error: Encountered an empty chunk. Skipping..."
-                rm "$chunk_file"
-                continue
+                echo "Uploading chunk of size ${#current_chunk} bytes with Block ID $BLOCK_ID..."
+                echo -n "$current_chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+                current_chunk=""
             fi
+        done
 
+        # Process any remaining data that didn't fill a full chunk
+        if [ -n "$current_chunk" ]; then
             BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
             BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
-            # Verify and print the size of each chunk
-            chunk_size_bytes=$(wc -c < "$chunk_file")
-            echo "Chunk size: $chunk_size_bytes bytes"
-
-            # Print the chunk content (first 100 characters for brevity)
-            echo "Debug: Chunk content (first 100 chars): $(head -c 100 "$chunk_file")"
-
-            # Upload the current chunk to Azure Blob Storage
-            upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
-
-            # Remove the temporary chunk file
-            rm "$chunk_file"
-        done
-    fi
+            echo "Uploading final chunk of size ${#current_chunk} bytes with Block ID $BLOCK_ID..."
+            echo -n "$current_chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        fi
+    }
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"

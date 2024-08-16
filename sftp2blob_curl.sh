@@ -141,6 +141,7 @@ commit_blocks_to_azure_blob() {
     echo "Successfully committed blocks to create the final blob."
 }
 
+
 # Function to obtain an access token for Azure services using managed identity
 get_access_token() {
     local resource=$1
@@ -231,12 +232,13 @@ fi
 echo "Successfully retrieved credentials from Azure Key Vault."
 
 # Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
+# Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_size=${5:-67108864}  # 64 MB
+    local chunk_size=${5:-67108864}  # Default to 64 MB
 
     BLOCK_ID_LIST=()
     BLOCK_INDEX=0
@@ -294,14 +296,6 @@ stream_file_to_blob() {
         rm -f "$chunk_file"
     done
 
-    # Ensure the last partial chunk is uploaded if the loop ended before processing it
-    if [ "$chunk_size_uploaded" -ne "$chunk_size" ] && [ "$chunk_size_uploaded" -gt 0 ]; then
-        echo "Uploading final partial chunk..."
-        BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
-        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
-    fi
-
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
     for block in "${BLOCK_ID_LIST[@]}"; do
@@ -315,6 +309,15 @@ stream_file_to_blob() {
 
     echo "File transfer completed successfully."
 }
+
+# Obtain access token for Azure Storage
+echo "Obtaining access token for Azure Storage..."
+access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
+
+# Call the function to upload the file in chunks
+stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
+
+echo "All operations completed successfully."
 
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."

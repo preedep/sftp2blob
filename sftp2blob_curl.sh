@@ -354,7 +354,7 @@ stream_file_to_blob_v2() {
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_size=${5:-67108864}  # Default to 64 MB (64 * 1024 * 1024)
+    local chunk_size=${5:-67108864}  # Default to 64 MB
 
     declare -a BLOCK_ID_LIST
     BLOCK_INDEX=0
@@ -388,11 +388,11 @@ stream_file_to_blob_v2() {
 
     eval "$full_command" 2>/dev/null | {
         total_size_uploaded=0
-
+        local buffer
         while true; do
-            # Read a chunk of data, ensure it reads up to 64MB
-            chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
-            chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
+            # Read a chunk of data into a buffer, ensuring null bytes are handled properly
+            buffer=$(dd bs="$chunk_size" count=1 2>/dev/null)
+            chunk_size_uploaded=$(echo -n "$buffer" | wc -c)
 
             echo "Debug: Chunk size read: $chunk_size_uploaded bytes"
 
@@ -408,7 +408,7 @@ stream_file_to_blob_v2() {
             echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
 
             # Upload the chunk to Azure Blob Storage
-            echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+            echo -n "$buffer" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
 
             if [ $? -ne 0 ]; then
                 echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"

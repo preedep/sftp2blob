@@ -270,6 +270,7 @@ new script: `sftp2blob_curl.sh`
 #### Example for run Docker
 ```bash
 docker run -it --rm --name sftp2blob-curl \
+    -v "$(pwd)":/tmp \
     -e SFTP_HOST=localhost \
     -e SFTP_PORT=21 \
     -e REMOTE_FILE_PATH=/upload/test.csv \
@@ -281,6 +282,6 @@ docker run -it --rm --name sftp2blob-curl \
     -e SFTP_USERNAME_SECRET_NAME=FTP-USER \
     -e SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD \
     -e MANAGED_IDENTITY_CLIENT_ID=afc87ccf-6294-4ac7-9533-179fb67f6c8b \
-    sftp2blob-curl-img:latest --protocol ftp    
+    sftp2blob-curl-img:latest --protocol ftp
     
 ```

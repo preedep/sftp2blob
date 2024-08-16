@@ -266,7 +266,7 @@ stream_file_to_blob() {
     echo "Running command: $full_command"
 
     # Stream the data directly in chunks using dd
-    eval "$full_command" | tee /tmp/data_stream.log | while :; do
+    eval "$full_command" | tee data_stream.log | while :; do
         # Generate a unique block ID for each chunk
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
@@ -289,7 +289,7 @@ stream_file_to_blob() {
 
         # Debugging: Log the chunk details
         echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
-        cat "$chunk_file" >> /tmp/last_chunk.log
+        cat "$chunk_file" >> last_chunk.log
 
         # Add the block ID to the list
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")

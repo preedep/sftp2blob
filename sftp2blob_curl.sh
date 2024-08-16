@@ -348,116 +348,13 @@ stream_file_to_blob() {
     echo "File transfer completed successfully."
 }
 
-stream_file_to_blob_v2() {
-    local access_token=$1
-    local storage_account=$2
-    local container_name=$3
-    local blob_name=$4
-    local chunk_size=${5:-67108864}  # Default to 64 MB
-
-    declare -a BLOCK_ID_LIST  # Ensure BLOCK_ID_LIST is declared as an array
-    BLOCK_INDEX=0
-    block_list_file="block_list.xml"
-    final_block_list_file="final_block_list.xml"
-
-    # Clean up old block list files if they exist
-    rm -f "$block_list_file" "$final_block_list_file"
-
-    echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
-
-    # Determine the command to fetch the file based on the protocol
-    if [ "$PROTOCOL" == "sftp" ]; then
-        command="sftp"
-        options="-P $SFTP_PORT $SFTP_USER@$SFTP_HOST"
-        fetch_command="get -o - $REMOTE_FILE_PATH"
-    elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
-        command="lftp"
-        options="-u $SFTP_USER,$SFTP_PASSWORD -p $SFTP_PORT $SFTP_HOST"
-        fetch_command="set ftp:passive-mode on; cat $REMOTE_FILE_PATH; bye"
-    else
-        echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
-        print_help
-        exit 1
-    fi
-
-    echo "Connecting to $SFTP_HOST via $PROTOCOL..."
-    full_command="$command $options -e \"$fetch_command\""
-    echo "Running command: $full_command"
-
-    eval "$full_command" 2>/dev/null | {
-        total_size_uploaded=0  # Initialize a variable to track the total size uploaded
-        local chunk_size_uploaded
-
-        while true; do
-            # Read a chunk from the remote file using dd
-            chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
-            chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
-            total_size_uploaded=$((total_size_uploaded + chunk_size_uploaded))
-
-            if [ "$chunk_size_uploaded" -eq 0 ]; then
-                echo "No more data to process. Ending the transfer."
-                break
-            fi
-
-            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-            BLOCK_INDEX=$((BLOCK_INDEX + 1))
-
-            echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
-
-            # Append BLOCK_ID to a file
-            echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
-
-            # Upload the chunk to Azure Blob Storage
-            echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-
-            if [ $? -ne 0 ]; then
-                echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
-                exit 1
-            fi
-
-            # If the last chunk was smaller than chunk_size, this is the end of the file
-            if [ "$chunk_size_uploaded" -lt "$chunk_size" ]; then
-                echo "Last chunk processed, ending the loop."
-                break
-            fi
-        done
-
-        echo "Total size uploaded: $total_size_uploaded bytes"
-    }
-
-    if [ ! -f "$block_list_file" ]; then
-        echo "Error: Failed to create the block list file."
-        exit 1
-    fi
-
-    echo "<BlockList>" > "$final_block_list_file"
-    cat "$block_list_file" >> "$final_block_list_file"
-    echo "</BlockList>" >> "$final_block_list_file"
-    BLOCK_LIST_XML=$(<"$final_block_list_file")
-
-    # Check if BLOCK_LIST_XML is empty
-    if [ -z "$BLOCK_LIST_XML" ]; then
-        echo "Error: The block list is empty."
-        exit 1
-    fi
-
-    echo "Committing blocks to finalize the blob..."
-    commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
-
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to commit blocks to Azure Blob Storage."
-        exit 1
-    fi
-
-    echo "File transfer completed successfully."
-}
 
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
 
 # Call the function to upload the file in chunks
-stream_file_to_blob_v2 "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
+stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
 echo "All operations completed successfully."
 

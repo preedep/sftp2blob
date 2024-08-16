@@ -103,6 +103,7 @@ upload_chunk_to_azure_blob() {
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-blob-type: BlockBlob" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
+                # shellcheck disable=SC2153
                 -H "Content-Length: ${CHUNK_SIZE}" \
                 --data-binary @- \
                 "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=block&blockid=${block_id}")
@@ -240,7 +241,6 @@ stream_file_to_blob() {
     local chunk_size=${5:-4194304}  # Default to 4 MB
 
     BLOCK_ID_LIST=()
-    # shellcheck disable=SC2034
     BLOCK_INDEX=0
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
@@ -251,9 +251,7 @@ stream_file_to_blob() {
         fetch_command="get -o - $REMOTE_FILE_PATH"
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
-        # shellcheck disable=SC2089
         options="-u $SFTP_USER,$SFTP_PASSWORD -e \"get $REMOTE_FILE_PATH -o -; bye\" ${PROTOCOL}://${SFTP_HOST}"
-        # shellcheck disable=SC2034
         fetch_command=""
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
@@ -261,9 +259,16 @@ stream_file_to_blob() {
         exit 1
     fi
 
-    # Start streaming the file in chunks and uploading each chunk to Azure Blob Storage
-    # shellcheck disable=SC2090
-    $command "$options" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+    # Stream the file from FTP/SFTP/FTPS and upload chunks directly
+    while IFS= read -r -d '' chunk; do
+        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
+        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+
+        # Upload the current chunk to Azure Blob Storage
+        echo "Uploading chunk with block ID $BLOCK_ID..."
+        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+
+    done < <($command $options | split -b "$chunk_size" -a 6 -d --filter cat)
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
@@ -273,9 +278,10 @@ stream_file_to_blob() {
     BLOCK_LIST_XML+="</BlockList>"
 
     # Commit the blocks to create the final blob
+    echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
 
-    # Cleanup any remaining local chunk files
+    # Cleanup any remaining local chunk files (if any)
     rm -f "${LOCAL_FILE_PATH}.chunk.*"
 
     echo "File transfer completed successfully."

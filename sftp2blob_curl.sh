@@ -232,7 +232,6 @@ fi
 
 echo "Successfully retrieved credentials from Azure Key Vault."
 
-# Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -267,7 +266,7 @@ stream_file_to_blob() {
     echo "Running command: $full_command"
 
     # Stream the data directly in chunks using dd
-    eval "$full_command" | tee data_stream.log | while :; do
+    eval "$full_command" | tee data_stream.log | while read -r line; do
         # Generate a unique block ID for each chunk
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
@@ -275,8 +274,8 @@ stream_file_to_blob() {
         # Create a temporary file for the chunk
         chunk_file=$(mktemp)
 
-        # Read a chunk of data directly into the file
-        dd bs="$chunk_size" count=1 iflag=fullblock of="$chunk_file" 2>/dev/null
+        # Write the streamed line to the temporary file
+        echo "$line" > "$chunk_file"
 
         # Get the actual size of the chunk read
         chunk_size_uploaded=$(stat -c%s "$chunk_file")
@@ -290,7 +289,6 @@ stream_file_to_blob() {
 
         # Debugging: Log the chunk details
         echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
-        cat "$chunk_file" >> last_chunk.log
 
         # Add the block ID to the list
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
@@ -301,6 +299,12 @@ stream_file_to_blob() {
         # Clean up the temporary chunk file
         rm -f "$chunk_file"
     done
+
+    # Check if any blocks were actually uploaded
+    if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
+        echo "Error: No blocks were uploaded. The block list is empty."
+        exit 1
+    fi
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"

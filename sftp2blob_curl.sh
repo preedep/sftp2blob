@@ -273,7 +273,7 @@ stream_file_to_blob() {
 
     echo "Connecting to $SFTP_HOST via $PROTOCOL..."
     full_command="$command $options -e \"$fetch_command\""
-    echo "Running command: $full_command"
+    #echo "Running command: $full_command"
 
     eval "$full_command" 2>/dev/null | {
         total_size_uploaded=0

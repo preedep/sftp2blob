@@ -99,7 +99,7 @@ upload_chunk_to_azure_blob() {
     local blob_name=$4
     local block_id=$5
 
-    response=$(curl -X PUT -s -w "%{http_code}" \
+    response=$(curl -v -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-blob-type: BlockBlob" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
@@ -124,7 +124,7 @@ commit_blocks_to_azure_blob() {
     local blob_name=$4
     local block_list_xml=$5
 
-    response=$(curl -X PUT -s -w "%{http_code}" \
+    response=$(curl -v -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
                 -H "Content-Type: application/xml" \

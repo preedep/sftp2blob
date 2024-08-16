@@ -82,6 +82,15 @@ but if you run with docker you don't need to install the following tools. my doc
 - [lftp](https://lftp.yar.ru/)
 - [sftp](https://linuxize.com/post/how-to-use-linux-sftp-command-to-transfer-files/)
 - [jq](https://stedolan.github.io/jq/)
+
+#### Azure CLI (Add extensions)
+For this script will add all available extensions to the Azure CLI.
+```bash
+for extension in $(az extension list-available --query "[].name" -o tsv); do
+  az extension add --name $extension
+done
+```
+
 ### Azure Resources
 - Azure VM (Linux) (for run the script)
 - Azure Blob Storage account
@@ -100,13 +109,6 @@ Managed Identity
 Attach the managed identity to the Azure VM (Linux)
 ![Attach the managed identity to the Azure VM (Linux)](imgs/msi2.png)
 
-## Azure CLI (Add extensions)
-For this script will add all available extensions to the Azure CLI.
-```bash
-for extension in $(az extension list-available --query "[].name" -o tsv); do
-  az extension add --name $extension
-done
-```
 
 ## Example for run shell script
 This example uses the `ftp` protocol to connect to the FTP server (localhost) and copy the file `test.csv` to the Azure Blob Storage account `nickdevstorage003` and container `datas` with the blob name `test.csv`. The script uses the Azure Key Vault `nickkvdev001` to store the FTP username and password.

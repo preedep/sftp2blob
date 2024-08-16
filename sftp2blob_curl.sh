@@ -274,30 +274,45 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
     echo "Running command: $full_command"
 
-    # Stream the data directly in chunks using dd
-    eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while IFS= read -r -d '' chunk; do
-        if [ -z "$chunk" ]; then
-            echo "No more data to process. Ending the transfer."
-            break
+    # Read the entire content if it's smaller than the chunk size or process it in chunks
+    eval "$full_command" | {
+        # Determine if the file is smaller than the chunk size by reading it in one go
+        small_chunk=$(dd bs=$chunk_size count=1 2>/dev/null)
+
+        if [ -n "$small_chunk" ] && [ "$(echo -n "$small_chunk" | wc -c)" -lt "$chunk_size" ]; then
+            # If the entire file is smaller than chunk size, handle it in one go
+            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+            BLOCK_INDEX=$((BLOCK_INDEX + 1))
+            echo "Uploading small file as a single chunk with Block ID $BLOCK_ID..."
+            echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
+            echo -n "$small_chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        else
+            # Otherwise, handle it in chunks
+            echo -n "$small_chunk" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while IFS= read -r -d '' chunk; do
+                if [ -z "$chunk" ]; then
+                    echo "No more data to process. Ending the transfer."
+                    break
+                fi
+
+                BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+                BLOCK_INDEX=$((BLOCK_INDEX + 1))
+
+                chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
+
+                echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+
+                # Append BLOCK_ID to a file
+                echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
+
+                echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+
+                if [ $? -ne 0 ]; then
+                    echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
+                    exit 1
+                fi
+            done
         fi
-
-        BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-        BLOCK_INDEX=$((BLOCK_INDEX + 1))
-
-        chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
-
-        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
-
-        # Append BLOCK_ID to a file
-        echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
-
-        echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-
-        if [ $? -ne 0 ]; then
-            echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
-            exit 1
-        fi
-    done
+    }
 
     if [ ! -f "$block_list_file" ]; then
         echo "Error: Failed to create the block list file."

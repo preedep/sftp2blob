@@ -1,6 +1,6 @@
 #!/bin/bash
 # Define the latest Azure REST API versions
-AZURE_KEY_VAULT_API_VERSION="2024-04-01-preview"
+AZURE_KEY_VAULT_API_VERSION="7.5"
 AZURE_STORAGE_API_VERSION="2023-08-03"
 
 # Help function

@@ -249,39 +249,34 @@ stream_file_to_blob() {
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
         options="-d -u $SFTP_USER,$SFTP_PASSWORD -p $SFTP_PORT $SFTP_HOST"
-        fetch_command="set ftp:passive-mode on; cat $REMOTE_FILE_PATH ; bye"
+        fetch_command="set ftp:passive-mode on; cat $REMOTE_FILE_PATH; bye"
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
         print_help
         exit 1
     fi
 
-    if [ "$PROTOCOL" == "sftp" ]; then
-        $command $options <<EOF | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
-$fetch_command
-bye
-EOF
-    else
-        echo "Connecting to $SFTP_HOST via $PROTOCOL..."
+    echo "Connecting to $SFTP_HOST via $PROTOCOL..."
 
-        connection_log=$(mktemp)
+    connection_log=$(mktemp)
+    full_command="$command $options -e \"$fetch_command\""
 
-         echo "Executing command: $command $options -e "$fetch_command""
+    # Explicitly print the command to be executed
+    echo "Executing command: $full_command"
 
-        if ! $command -e "$fetch_command" >"$connection_log" 2>&1; then
-            echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
-            echo "Connection log:"
-            cat "$connection_log"
-            rm "$connection_log"
-            exit 1
-        fi
-
-        echo "Connected successfully. Starting to fetch and upload the file..."
-        $command -e "$fetch_command" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
-
-        # Clean up the connection log
+    if ! eval "$full_command" >"$connection_log" 2>&1; then
+        echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
+        echo "Connection log:"
+        cat "$connection_log"
         rm "$connection_log"
+        exit 1
     fi
+
+    echo "Connected successfully. Starting to fetch and upload the file..."
+    eval "$full_command" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+
+    # Clean up the connection log
+    rm "$connection_log"
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
@@ -299,6 +294,7 @@ EOF
 
     echo "File transfer completed successfully."
 }
+
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")

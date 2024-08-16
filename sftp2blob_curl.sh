@@ -103,6 +103,7 @@ upload_chunk_to_azure_blob() {
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-blob-type: BlockBlob" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
+                -H "Content-Type:" \
                 --data-binary @- \
                 "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=block&blockid=${block_id}")
 

@@ -248,7 +248,7 @@ stream_file_to_blob() {
         fetch_command="get -o - $REMOTE_FILE_PATH"
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
-        options="-u $SFTP_USER,$SFTP_PASSWORD -p $SFTP_PORT $SFTP_HOST"
+        options="-d -u $SFTP_USER,$SFTP_PASSWORD -p $SFTP_PORT $SFTP_HOST"
         fetch_command="set ftp:passive-mode on; get $REMOTE_FILE_PATH -o -; bye"
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
@@ -266,7 +266,8 @@ EOF
 
         connection_log=$(mktemp)
 
-         echo "Executing command: $command $options $fetch_command"
+         echo "Executing command: $command $options -e "$fetch_command""
+
         if ! $command -e "$fetch_command" >"$connection_log" 2>&1; then
             echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
             echo "Connection log:"

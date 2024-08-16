@@ -1,4 +1,7 @@
 #!/bin/bash
+# Define the latest Azure REST API versions
+AZURE_KEY_VAULT_API_VERSION="2024-04-01-preview"
+AZURE_STORAGE_API_VERSION="2023-08-03"
 
 # Help function
 print_help() {
@@ -64,15 +67,31 @@ print_debug_info() {
     echo ""
 }
 
-# Azure REST API endpoints
+# Function to retrieve a secret from Azure Key Vault
 get_az_key_vault_secret() {
     local secret_name=$1
     local access_token=$2
     local vault_name=$3
 
-    curl -s -H "Authorization: Bearer $access_token" "https://${vault_name}.vault.azure.net/secrets/${secret_name}?api-version=7.3" | jq -r '.value'
-}
+    # Make the API request
+    response=$(curl -s -w "%{http_code}" -H "Authorization: Bearer $access_token" \
+                "https://${vault_name}.vault.azure.net/secrets/${secret_name}?api-version=${AZURE_KEY_VAULT_API_VERSION}")
 
+    # Extract the body and the status code
+    http_body=$(echo "$response" | sed -e 's/[0-9]*$//')
+    http_status=$(echo "$response" | tail -n1)
+
+    # Check if the request was successful
+    if [ "$http_status" -ne 200 ]; then
+        echo "Error: Failed to retrieve secret '${secret_name}' from Key Vault '${vault_name}'. HTTP Status: $http_status"
+        echo "Response: $http_body"
+        exit 1
+    fi
+
+    # Return the secret value
+    echo "$http_body" | jq -r '.value'
+}
+# Function to upload a chunk to Azure Blob Storage
 upload_chunk_to_azure_blob() {
     local access_token=$1
     local storage_account=$2
@@ -81,15 +100,25 @@ upload_chunk_to_azure_blob() {
     local chunk_file_path=$5
     local block_id=$6
 
-    curl -X PUT \
-         -H "Authorization: Bearer $access_token" \
-         -H "x-ms-blob-type: BlockBlob" \
-         -H "x-ms-version: 2020-04-08" \
-         -H "x-ms-blob-content-md5: $(openssl dgst -md5 -binary "$chunk_file_path" | base64)" \
-         --data-binary @"$chunk_file_path" \
-         "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=block&blockid=${block_id}"
-}
+    # Upload the chunk and capture the status code
+    response=$(curl -X PUT -s -w "%{http_code}" \
+                -H "Authorization: Bearer $access_token" \
+                -H "x-ms-blob-type: BlockBlob" \
+                -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
+                -H "x-ms-blob-content-md5: $(openssl dgst -md5 -binary "$chunk_file_path" | base64)" \
+                --data-binary @"$chunk_file_path" \
+                "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=block&blockid=${block_id}")
 
+    # Extract the status code
+    http_status=$(echo "$response" | tail -n1)
+
+    # Check if the upload was successful
+    if [ "$http_status" -ne 201 ]; then
+        echo "Error: Failed to upload chunk '$block_id' to Azure Blob Storage. HTTP Status: $http_status"
+        exit 1
+    fi
+}
+# Function to commit the uploaded blocks to Azure Blob Storage
 commit_blocks_to_azure_blob() {
     local access_token=$1
     local storage_account=$2
@@ -97,12 +126,22 @@ commit_blocks_to_azure_blob() {
     local blob_name=$4
     local block_list_xml=$5
 
-    curl -X PUT \
-         -H "Authorization: Bearer $access_token" \
-         -H "x-ms-version: 2020-04-08" \
-         -H "Content-Type: application/xml" \
-         --data "$block_list_xml" \
-         "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=blocklist"
+    # Commit the block list and capture the status code
+    response=$(curl -X PUT -s -w "%{http_code}" \
+                -H "Authorization: Bearer $access_token" \
+                -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
+                -H "Content-Type: application/xml" \
+                --data "$block_list_xml" \
+                "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=blocklist")
+
+    # Extract the status code
+    http_status=$(echo "$response" | tail -n1)
+
+    # Check if the commit was successful
+    if [ "$http_status" -ne 201 ]; then
+        echo "Error: Failed to commit blocks to Azure Blob Storage. HTTP Status: $http_status"
+        exit 1
+    fi
 }
 
 # Function to obtain an access token for Azure services using managed identity

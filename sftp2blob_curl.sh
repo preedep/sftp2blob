@@ -354,9 +354,9 @@ stream_file_to_blob_v2() {
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_size=${5:-1048576}  # Default to 64 MB (64 * 1024 * 1024)
+    local chunk_size=${5:-67108864}  # Default to 64 MB (64 * 1024 * 1024)
 
-    declare -a BLOCK_ID_LIST  # Ensure BLOCK_ID_LIST is declared as an array
+    declare -a BLOCK_ID_LIST
     BLOCK_INDEX=0
     block_list_file="block_list.xml"
     final_block_list_file="final_block_list.xml"
@@ -365,6 +365,7 @@ stream_file_to_blob_v2() {
     rm -f "$block_list_file" "$final_block_list_file"
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
+    echo "Using chunk size: $chunk_size bytes"
 
     # Determine the command to fetch the file based on the protocol
     if [ "$PROTOCOL" == "sftp" ]; then
@@ -385,46 +386,43 @@ stream_file_to_blob_v2() {
     full_command="$command $options -e \"$fetch_command\""
     echo "Running command: $full_command"
 
-    # Stream the data directly in chunks
     eval "$full_command" 2>/dev/null | {
-        total_size_uploaded=0  # Initialize a variable to track the total size uploaded
-        local chunk_size_uploaded
-        local buffer=""
+        total_size_uploaded=0
 
-        while read -r -n "$chunk_size" -d '' chunk; do
-            buffer+="$chunk"
-            chunk_size_uploaded=$(echo -n "$buffer" | wc -c)
+        while true; do
+            # Read a chunk of data, ensure it reads up to 64MB
+            chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
+            chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
 
-            if [ "$chunk_size_uploaded" -ge "$chunk_size" ]; then
-                BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-                BLOCK_INDEX=$((BLOCK_INDEX + 1))
+            echo "Debug: Chunk size read: $chunk_size_uploaded bytes"
 
-                echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+            if [ "$chunk_size_uploaded" -eq 0 ]; then
+                echo "No more data to process. Ending the transfer."
+                break
+            fi
 
-                # Append BLOCK_ID to a file
-                echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
+            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+            BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-                # Upload the chunk to Azure Blob Storage
-                echo -n "$buffer" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+            echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+            echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
 
-                if [ $? -ne 0 ]; then
-                    echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
-                    exit 1
-                fi
+            # Upload the chunk to Azure Blob Storage
+            echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
 
-                total_size_uploaded=$((total_size_uploaded + chunk_size_uploaded))
-                buffer=""  # Clear the buffer after uploading
+            if [ $? -ne 0 ]; then
+                echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
+                exit 1
+            fi
+
+            total_size_uploaded=$((total_size_uploaded + chunk_size_uploaded))
+
+            # If the last chunk is smaller than the chunk size, stop reading
+            if [ "$chunk_size_uploaded" -lt "$chunk_size" ]; then
+                echo "Last chunk processed, ending the loop."
+                break
             fi
         done
-
-        # Handle the last remaining chunk in the buffer
-        if [ -n "$buffer" ]; then
-            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-            echo "Uploading final chunk with Block ID $BLOCK_ID (Size: ${#buffer} bytes)..."
-            echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
-            echo -n "$buffer" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-            total_size_uploaded=$((total_size_uploaded + ${#buffer}))
-        fi
 
         echo "Total size uploaded: $total_size_uploaded bytes"
     }
@@ -439,7 +437,6 @@ stream_file_to_blob_v2() {
     echo "</BlockList>" >> "$final_block_list_file"
     BLOCK_LIST_XML=$(<"$final_block_list_file")
 
-    # Check if BLOCK_LIST_XML is empty
     if [ -z "$BLOCK_LIST_XML" ]; then
         echo "Error: The block list is empty."
         exit 1

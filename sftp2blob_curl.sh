@@ -275,9 +275,10 @@ stream_file_to_blob() {
             break
         fi
 
-        # Generate block ID
-        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
+        # Generate a unique block ID for each chunk
+        BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+        BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
         # Upload the chunk to Azure Blob Storage
         echo "Uploading chunk with Block ID $BLOCK_ID..."

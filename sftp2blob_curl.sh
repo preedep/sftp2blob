@@ -231,6 +231,7 @@ fi
 echo "Successfully retrieved credentials from Azure Key Vault."
 
 # Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
+# Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -278,6 +279,15 @@ stream_file_to_blob() {
     fi
 
     echo "Connected successfully. Starting to fetch and upload the file..."
+
+    # Determine the total file size
+    total_size=$(eval "$full_command" | wc -c)
+
+    # If the total size is less than the chunk size, upload it as a single chunk
+    if [ "$total_size" -lt "$chunk_size" ]; then
+        chunk_size="$total_size"
+    fi
+
     # Stream the file in chunks and upload each chunk directly
     while IFS= read -r -d '' chunk; do
         if [ -z "$chunk" ]; then

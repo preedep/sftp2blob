@@ -263,7 +263,8 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
 
     # Explicitly print the command to be executed
-    echo "Executing command: $full_command"
+
+    #echo "Executing command: $full_command"
 
     if ! eval "$full_command" >"$connection_log" 2>&1; then
         echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."

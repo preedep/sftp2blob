@@ -262,8 +262,8 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
     echo "Running command: $full_command"
 
-    # Stream the data directly in chunks using dd and read it in binary mode
-    eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while IFS= read -r -d '' chunk; do
+    # Stream the data directly in chunks using dd
+    while IFS= read -r -d '' chunk; do
         if [ -z "$chunk" ]; then
             echo "No more data to process. Ending the transfer."
             break
@@ -278,7 +278,7 @@ stream_file_to_blob() {
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-    done
+    done < <(eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | tr -d '\0')
 
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
         echo "Error: No blocks were uploaded. The block list is empty."

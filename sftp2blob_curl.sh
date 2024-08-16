@@ -262,51 +262,35 @@ stream_file_to_blob() {
 
     full_command="$command $options -e \"$fetch_command\""
 
-    # Debugging: Log the command being run
     echo "Running command: $full_command"
 
-    # Stream the data directly in chunks using dd
-    eval "$full_command" | tee data_stream.log | while read -r line; do
-        # Generate a unique block ID for each chunk
+    eval "$full_command" | while read -r line; do
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-        # Create a temporary file for the chunk
         chunk_file=$(mktemp)
-
-        # Write the streamed line to the temporary file
         echo "$line" > "$chunk_file"
 
-        # Get the actual size of the chunk read
         chunk_size_uploaded=$(stat -c%s "$chunk_file")
 
-        # If the chunk size is zero, we have reached the end of the file
         if [ "$chunk_size_uploaded" -eq 0 ]; then
             echo "No more data to process. Ending the transfer."
             rm -f "$chunk_file"
             break
         fi
 
-        # Debugging: Log the chunk details
         echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
-
-        # Add the block ID to the list
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
-        # Upload the chunk to Azure Blob Storage
         upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
-
-        # Clean up the temporary chunk file
         rm -f "$chunk_file"
     done
 
-    # Check if any blocks were actually uploaded
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
         echo "Error: No blocks were uploaded. The block list is empty."
         exit 1
     fi
 
-    # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
     for block in "${BLOCK_ID_LIST[@]}"; do
         BLOCK_LIST_XML+="$block"
@@ -314,8 +298,6 @@ stream_file_to_blob() {
     BLOCK_LIST_XML+="</BlockList>"
 
     echo "$BLOCK_LIST_XML" > block_list.xml
-
-    # Commit the blocks to create the final blob
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
 

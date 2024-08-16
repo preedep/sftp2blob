@@ -242,44 +242,49 @@ stream_file_to_blob() {
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
 
+    # Prepare command and options based on the protocol
     if [ "$PROTOCOL" == "sftp" ]; then
         command="sftp"
         options="-P $SFTP_PORT $SFTP_USER@$SFTP_HOST"
         fetch_command="get -o - $REMOTE_FILE_PATH"
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
-        options="-d -u $SFTP_USER,$SFTP_PASSWORD $SFTP_HOST"
-        fetch_command="cat $REMOTE_FILE_PATH"
+        options="-u $SFTP_USER,$SFTP_PASSWORD -e \"cat $REMOTE_FILE_PATH; bye\" $PROTOCOL://$SFTP_HOST"
+        fetch_command=""
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
         print_help
         exit 1
     fi
 
+    # Create a named pipe for chunking the data
+    pipe=$(mktemp -u)
+    mkfifo "$pipe"
+
+    # Start streaming the file from the server
     if [ "$PROTOCOL" == "sftp" ]; then
-        # Stream the file directly from the SFTP server and upload chunks
-        $command $options <<EOF | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+        $command $options <<EOF > "$pipe" &
 $fetch_command
 bye
 EOF
     else
         echo "Connecting to $SFTP_HOST via $PROTOCOL..."
-
-        connection_log=$(mktemp)
-        if ! $command -e "$fetch_command; bye" >"$connection_log" 2>&1; then
+        if ! $command > "$pipe" 2>/dev/null & then
             echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
-            echo "Connection log:"
-            cat "$connection_log"
-            rm "$connection_log"
+            rm "$pipe"
             exit 1
         fi
-
-        echo "Connected successfully. Starting to fetch and upload the file..."
-        $command -e "$fetch_command; bye" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
-
-        # Clean up the connection log
-        rm "$connection_log"
     fi
+
+    # Read from the pipe and upload in chunks
+    while dd if="$pipe" bs="$chunk_size" count=1 2>/dev/null | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"; do
+        BLOCK_ID_LIST+=("<Latest>$(printf "%06d" $((BLOCK_INDEX-1)) | base64)</Latest>")
+        echo "Uploaded chunk with block ID $(printf "%06d" $((BLOCK_INDEX-1)) | base64)"
+    done
+
+    # Close and remove the named pipe
+    wait
+    rm "$pipe"
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
@@ -291,9 +296,6 @@ EOF
     # Commit the blocks to create the final blob
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
-
-    # Cleanup any remaining local chunk files (if any)
-    rm -f "${LOCAL_FILE_PATH}.chunk.*"
 
     echo "File transfer completed successfully."
 }

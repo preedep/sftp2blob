@@ -275,15 +275,19 @@ stream_file_to_blob() {
 
     echo "Connected successfully. Starting to fetch and upload the file..."
 
-    # Read the file in chunks and upload each chunk directly
+    # Stream the file in chunks and upload each chunk directly
     while IFS= read -r -d '' chunk; do
         BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
+        # Verify and print the size of each chunk
+        chunk_size=$(echo -n "$chunk" | wc -c)
+        echo "Chunk size: $chunk_size bytes"
+
         # Upload the current chunk to Azure Blob Storage
         echo "Uploading chunk with block ID $BLOCK_ID..."
-        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-    done < <(eval "$full_command" | split -b "$chunk_size" --filter='cat')
+        echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+    done < <(eval "$full_command" | split -b "$chunk_size" -a 6 -d --filter='cat')
 
     # Clean up the connection log
     rm "$connection_log"
@@ -298,6 +302,9 @@ stream_file_to_blob() {
     # Commit the blocks to create the final blob
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
+
+    # Cleanup any remaining local chunk files (if any)
+    rm -f "${LOCAL_FILE_PATH}.chunk.*"
 
     echo "File transfer completed successfully."
 }

@@ -99,6 +99,7 @@ upload_chunk_to_azure_blob() {
     local blob_name=$4
     local block_id=$5
 
+    # shellcheck disable=SC1073
     response=$(curl -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-blob-type: BlockBlob" \

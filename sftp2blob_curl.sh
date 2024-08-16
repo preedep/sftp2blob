@@ -232,7 +232,6 @@ fi
 echo "Successfully retrieved credentials from Azure Key Vault."
 
 # Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
-# Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -263,8 +262,11 @@ stream_file_to_blob() {
 
     full_command="$command $options -e \"$fetch_command\""
 
+    # Debugging: Log the command being run
+    echo "Running command: $full_command"
+
     # Stream the data directly in chunks using dd
-    eval "$full_command" | while :; do
+    eval "$full_command" | tee /tmp/data_stream.log | while :; do
         # Generate a unique block ID for each chunk
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
@@ -285,11 +287,14 @@ stream_file_to_blob() {
             break
         fi
 
+        # Debugging: Log the chunk details
+        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+        cat "$chunk_file" >> /tmp/last_chunk.log
+
         # Add the block ID to the list
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         # Upload the chunk to Azure Blob Storage
-        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
         upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
 
         # Clean up the temporary chunk file
@@ -309,6 +314,15 @@ stream_file_to_blob() {
 
     echo "File transfer completed successfully."
 }
+
+# Obtain access token for Azure Storage (only once)
+echo "Obtaining access token for Azure Storage..."
+access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
+
+# Call the function to upload the file in chunks
+stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
+
+echo "All operations completed successfully."
 
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."

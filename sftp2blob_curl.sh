@@ -96,22 +96,18 @@ upload_chunk_to_azure_blob() {
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_file_path=$5
-    local block_id=$6
+    local block_id=$5
 
-    # Upload the chunk and capture the status code
     response=$(curl -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-blob-type: BlockBlob" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
-                -H "x-ms-blob-content-md5: $(openssl dgst -md5 -binary "$chunk_file_path" | base64)" \
-                --data-binary @"$chunk_file_path" \
+                -H "Content-Length: ${CHUNK_SIZE}" \
+                --data-binary @- \
                 "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=block&blockid=${block_id}")
 
-    # Extract the status code
     http_status=$(echo "$response" | tail -n1)
 
-    # Check if the upload was successful
     if [ "$http_status" -ne 201 ]; then
         echo "Error: Failed to upload chunk '$block_id' to Azure Blob Storage. HTTP Status: $http_status"
         exit 1
@@ -125,7 +121,6 @@ commit_blocks_to_azure_blob() {
     local blob_name=$4
     local block_list_xml=$5
 
-    # Commit the block list and capture the status code
     response=$(curl -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
@@ -133,10 +128,8 @@ commit_blocks_to_azure_blob() {
                 --data "$block_list_xml" \
                 "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=blocklist")
 
-    # Extract the status code
     http_status=$(echo "$response" | tail -n1)
 
-    # Check if the commit was successful
     if [ "$http_status" -ne 201 ]; then
         echo "Error: Failed to commit blocks to Azure Blob Storage. HTTP Status: $http_status"
         exit 1

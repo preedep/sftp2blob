@@ -252,7 +252,7 @@ stream_file_to_blob() {
         fetch_command="get -o - $REMOTE_FILE_PATH"
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
-        options="-u $SFTP_USER,$SFTP_PASSWORD"
+        options="-u $SFTP_USER,$SFTP_PASSWORD $SFTP_HOST"
         fetch_command="cat $REMOTE_FILE_PATH"
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
@@ -260,14 +260,21 @@ stream_file_to_blob() {
         exit 1
     fi
 
-    # Stream the file from FTP/SFTP/FTPS and upload chunks directly
     if [ "$PROTOCOL" == "sftp" ]; then
         $command $options <<EOF | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
 $fetch_command
 bye
 EOF
     else
-        echo "open $SFTP_HOST" | $command $options -e "$fetch_command; bye" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+        # Attempt to connect to the FTP/FTPS server and fetch the file
+        echo "Connecting to $SFTP_HOST via $PROTOCOL..."
+        if ! $command -e "$fetch_command; bye" > /dev/null 2>&1; then
+            echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
+            exit 1
+        fi
+
+        echo "Connected successfully. Starting to fetch and upload the file..."
+        $command -e "$fetch_command; bye" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
     fi
 
     # Create the block list XML

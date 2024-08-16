@@ -241,6 +241,9 @@ stream_file_to_blob() {
     BLOCK_ID_LIST=()
     BLOCK_INDEX=0
 
+    # Ignore SIGPIPE to prevent broken pipe errors from showing
+    trap '' PIPE
+
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
 
     if [ "$PROTOCOL" == "sftp" ]; then
@@ -261,8 +264,11 @@ stream_file_to_blob() {
 
     full_command="$command $options -e \"$fetch_command\""
 
-    # Use dd to read and split the stream directly in binary-safe mode
-    eval "$full_command" | dd bs="$chunk_size" | while IFS= read -r -d '' chunk; do
+    # Stream the data directly in chunks using dd
+    eval "$full_command" | dd bs="$chunk_size" | while true; do
+        # Read a chunk of data
+        chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
+
         if [ -z "$chunk" ]; then
             echo "No more data to process. Ending the transfer."
             break

@@ -315,15 +315,6 @@ stream_file_to_blob() {
     echo "File transfer completed successfully."
 }
 
-# Obtain access token for Azure Storage (only once)
-echo "Obtaining access token for Azure Storage..."
-access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
-
-# Call the function to upload the file in chunks
-stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
-
-echo "All operations completed successfully."
-
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
@@ -332,12 +323,4 @@ access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_
 stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
 echo "All operations completed successfully."
-
-# Obtain access token for Azure Storage
-echo "Obtaining access token for Azure Storage..."
-access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
-
-# Call the function to upload the file in chunks
-stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
-
-echo "All operations completed successfully."
+exit 0  # Explicitly exit the script to prevent looping

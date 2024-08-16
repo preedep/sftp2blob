@@ -263,4 +263,5 @@ upload_file_in_chunks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$A
 # Cleanup (optional)
 rm -f "$LOCAL_FILE_PATH"
 
+
 echo "File transfer completed successfully."

@@ -348,7 +348,6 @@ stream_file_to_blob() {
     echo "File transfer completed successfully."
 }
 
-
 stream_file_to_blob_v2() {
     local access_token=$1
     local storage_account=$2
@@ -387,6 +386,7 @@ stream_file_to_blob_v2() {
 
     eval "$full_command" 2>/dev/null | {
         total_size_uploaded=0  # Initialize a variable to track the total size uploaded
+        local chunk_size_uploaded
 
         while true; do
             # Read a chunk from the remote file using dd
@@ -415,24 +415,12 @@ stream_file_to_blob_v2() {
                 exit 1
             fi
 
-            # Check if the last chunk was smaller than chunk_size, indicating the end of the file
+            # If the last chunk was smaller than chunk_size, this is the end of the file
             if [ "$chunk_size_uploaded" -lt "$chunk_size" ]; then
                 echo "Last chunk processed, ending the loop."
                 break
             fi
         done
-
-        # Handle the case where the file size is exactly a multiple of the chunk size
-        if [ "$chunk_size_uploaded" -eq "$chunk_size" ]; then
-            chunk=$(dd bs=1 count=1 2>/dev/null)  # Check for any remaining data
-            if [ -n "$chunk" ]; then
-                BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-                echo "Uploading final tiny chunk with Block ID $BLOCK_ID..."
-                echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
-                echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-                total_size_uploaded=$((total_size_uploaded + 1))
-            fi
-        fi
 
         echo "Total size uploaded: $total_size_uploaded bytes"
     }
@@ -463,6 +451,7 @@ stream_file_to_blob_v2() {
 
     echo "File transfer completed successfully."
 }
+
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")

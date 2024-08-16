@@ -196,7 +196,7 @@ Run the Docker container (with cli arguments)
 ```bash
 docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
     --host localhost \
-    --port 22 \
+    --port 21 \
     --remote /upload/test.csv \
     --local test.csv \
     --storage-account nickdevstorage003 \
@@ -209,9 +209,9 @@ docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
 ```
 Run the Docker container (with environment variables) #1
 ```bash
-docker run -it --rm --name sftp2blob \
+docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
     -e SFTP_HOST=localhost \
-    -e SFTP_PORT=22 \
+    -e SFTP_PORT=21 \
     -e REMOTE_FILE_PATH=/upload/test.csv \
     -e LOCAL_FILE_PATH=test.csv \
     -e AZURE_STORAGE_ACCOUNT=nickdevstorage003 \
@@ -221,13 +221,13 @@ docker run -it --rm --name sftp2blob \
     -e SFTP_USERNAME_SECRET_NAME=FTP-USER \
     -e SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD \
     -e MANAGED_IDENTITY_CLIENT_ID=<<client-id>> \
-    sftp2blob-img:latest
+    
 ```
 Run the Docker container (with environment variables) #2
 ```bash
 # Set the environment variables
 export SFTP_HOST=localhost
-export SFTP_PORT=22
+export SFTP_PORT=21
 export REMOTE_FILE_PATH=/upload/test.csv
 export LOCAL_FILE_PATH=test.csv
 export AZURE_STORAGE_ACCOUNT=nickdevstorage003
@@ -252,10 +252,11 @@ After implementing the basic functionality of the script, you can enhance the sc
 new script: `sftp2blob_curl.sh`
 
 ### Example (for CLI arguments or Environment Variables is same as above)
+#### Example for run shell script
 ```bash
 ./sftp2blob_curl.sh --protocol ftp \
     --host localhost \
-    --port 22 \
+    --port 21 \
     --remote /upload/test.csv \
     --local test.csv \
     --storage-account nickdevstorage003 \
@@ -265,4 +266,21 @@ new script: `sftp2blob_curl.sh`
     --username-secret FTP-USER \
     --password-secret FTP-PASSWORD \
     --identity <<client-id>> of managed identity
+```
+#### Example for run Docker
+```bash
+docker run -it --rm --name sftp2blob-curl sftp2blob-curl-img:latest --protocol ftp \
+    -e SFTP_HOST=localhost \
+    -e SFTP_PORT=21 \
+    -e REMOTE_FILE_PATH=/upload/test.csv \
+    -e LOCAL_FILE_PATH=test.csv \
+    -e AZURE_STORAGE_ACCOUNT=nickdevstorage003 \
+    -e AZURE_CONTAINER_NAME=datas \
+    -e AZURE_BLOB_NAME=test.csv \
+    -e KEY_VAULT_NAME=nickkvdev001 \
+    -e SFTP_USERNAME_SECRET_NAME=FTP-USER \
+    -e SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD \
+    -e MANAGED_IDENTITY_CLIENT_ID=<<client-id>> \
+    
+
 ```

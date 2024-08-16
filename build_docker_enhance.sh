@@ -1,0 +1,1 @@
+docker build -f Dockerfile.enhance -t sftp2blob-curl-img:latest .

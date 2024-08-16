@@ -229,55 +229,37 @@ if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
     exit 1
 fi
 
-# Function to download a file using SFTP, FTPS, or FTP
-download_file() {
-    case $PROTOCOL in
-        sftp)
-            echo "Downloading file from SFTP..."
-            sftp -P "$SFTP_PORT" "$SFTP_USER"@"$SFTP_HOST" <<EOF
-get $REMOTE_FILE_PATH $LOCAL_FILE_PATH
-bye
-EOF
-            ;;
-        ftps)
-            echo "Downloading file from FTPS..."
-            lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftps://"$SFTP_HOST"
-            ;;
-        ftp)
-            echo "Downloading file from FTP..."
-            lftp -u "$SFTP_USER","$SFTP_PASSWORD" -e "get $REMOTE_FILE_PATH -o $LOCAL_FILE_PATH; bye" ftp://"$SFTP_HOST"
-            ;;
-        *)
-            echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
-            print_help
-            exit 1
-            ;;
-    esac
-}
-
-# Download file using specified protocol
-download_file
-
-# Function to upload a file in chunks to Azure Blob Storage
-upload_file_in_chunks_to_azure_blob() {
+# Stream file in chunks from FTP/SFTP/FTPS to Azure Blob Storage
+stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local local_file_path=$5
-    local chunk_size=${6:-4194304}  # Default to 4 MB
+    local chunk_size=${5:-4194304}  # Default to 4 MB
 
-    # Initialize variables
     BLOCK_ID_LIST=()
+    # shellcheck disable=SC2034
     BLOCK_INDEX=0
 
-    # Split the file into chunks and upload each chunk
-    while IFS= read -r -d '' chunk; do
-        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)))
-        BLOCK_ID_B64=$(echo -n "$BLOCK_ID" | base64)
-        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID_B64</Latest>")
-        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$chunk" "$BLOCK_ID_B64"
-    done < <(split -b "$chunk_size" -a 6 -d --additional-suffix=.chunk "$local_file_path" "${local_file_path}.chunk.")
+    if [ "$PROTOCOL" == "sftp" ]; then
+        command="sftp"
+        options="-P $SFTP_PORT $SFTP_USER@$SFTP_HOST"
+        fetch_command="get -o - $REMOTE_FILE_PATH"
+    elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
+        command="lftp"
+        # shellcheck disable=SC2089
+        options="-u $SFTP_USER,$SFTP_PASSWORD -e \"get $REMOTE_FILE_PATH -o -; bye\" ${PROTOCOL}://${SFTP_HOST}"
+        # shellcheck disable=SC2034
+        fetch_command=""
+    else
+        echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
+        print_help
+        exit 1
+    fi
+
+    # Start streaming the file in chunks and uploading each chunk to Azure Blob Storage
+    # shellcheck disable=SC2016
+    $command $options | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
@@ -289,19 +271,18 @@ upload_file_in_chunks_to_azure_blob() {
     # Commit the blocks to create the final blob
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
 
-    # Cleanup (optional)
-    rm -f "${local_file_path}.chunk.*"
+    # Cleanup any remaining local chunk files
+    rm -f "${LOCAL_FILE_PATH}.chunk.*"
 }
 
 # Obtain access token for Azure Storage
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
 
 # Call the function to upload the file in chunks
-upload_file_in_chunks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$LOCAL_FILE_PATH"
+# shellcheck disable=SC2218
+stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
 # Cleanup (optional)
 rm -f *.chunk
-rm -f "$LOCAL_FILE_PATH"
-
 
 echo "File transfer completed successfully."

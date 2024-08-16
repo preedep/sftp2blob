@@ -236,7 +236,7 @@ stream_file_to_blob() {
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_size=${5:-67108864}  # Change to 64 MB (64 * 1024 * 1024)
+    local chunk_size=${5:-67108864}  # 64 MB
 
     BLOCK_ID_LIST=()
     BLOCK_INDEX=0
@@ -261,11 +261,8 @@ stream_file_to_blob() {
 
     full_command="$command $options -e \"$fetch_command\""
 
-    # Stream the data directly in chunks
-    eval "$full_command" | while true; do
-        # Read a chunk of data
-        chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
-
+    # Use dd to read and split the stream directly in binary-safe mode
+    eval "$full_command" | dd bs="$chunk_size" | while IFS= read -r -d '' chunk; do
         if [ -z "$chunk" ]; then
             echo "No more data to process. Ending the transfer."
             break

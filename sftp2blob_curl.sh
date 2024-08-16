@@ -24,8 +24,48 @@ print_help() {
     echo "  $0 --help"
 }
 
+# Configuration
+SFTP_HOST="${SFTP_HOST:-${2:-ftp.example.com}}"
+SFTP_PORT="${SFTP_PORT:-${3:-21}}"
+REMOTE_FILE_PATH="${REMOTE_FILE_PATH:-${4:-/remote/path/to/your/file.txt}}"
+LOCAL_FILE_PATH="${LOCAL_FILE_PATH:-${5:-/local/path/to/downloaded/file.txt}}"
+
+# Azure Configuration
+AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-${6:-your_storage_account_name}}"
+AZURE_CONTAINER_NAME="${AZURE_CONTAINER_NAME:-${7:-your_container_name}}"
+AZURE_BLOB_NAME="${AZURE_BLOB_NAME:-${8:-your_blob_name}}"
+
+# Azure Configuration - Azure Key Vault
+KEY_VAULT_NAME="${KEY_VAULT_NAME:-${9:-your-key-vault-name}}"
+SFTP_USERNAME_SECRET_NAME="${SFTP_USERNAME_SECRET_NAME:-${10:-ftp-username-secret}}"
+SFTP_PASSWORD_SECRET_NAME="${SFTP_PASSWORD_SECRET_NAME:-${11:-ftp-password-secret}}"
+
+# Azure Configuration - Specific Managed Identity
+MANAGED_IDENTITY_CLIENT_ID="${MANAGED_IDENTITY_CLIENT_ID:-${12:-your-managed-identity-client-id}}"
+
+
+# Debugging: Print all values
+print_debug_info() {
+    echo "Debug Information:"
+    echo "  PROTOCOL: $PROTOCOL"
+    echo "  SFTP_HOST: $SFTP_HOST"
+    echo "  SFTP_PORT: $SFTP_PORT"
+    echo "  REMOTE_FILE_PATH: $REMOTE_FILE_PATH"
+    echo "  LOCAL_FILE_PATH: $LOCAL_FILE_PATH"
+    echo "  AZURE_STORAGE_ACCOUNT: $AZURE_STORAGE_ACCOUNT"
+    echo "  AZURE_CONTAINER_NAME: $AZURE_CONTAINER_NAME"
+    echo "  AZURE_BLOB_NAME: $AZURE_BLOB_NAME"
+    echo "  KEY_VAULT_NAME: $KEY_VAULT_NAME"
+    echo "  SFTP_USERNAME_SECRET_NAME: $SFTP_USERNAME_SECRET_NAME"
+    echo "  SFTP_PASSWORD_SECRET_NAME: $SFTP_PASSWORD_SECRET_NAME"
+    echo "  MANAGED_IDENTITY_CLIENT_ID: $MANAGED_IDENTITY_CLIENT_ID"
+    echo "  SFTP_USER: $SFTP_USER"
+    echo "  SFTP_PASSWORD: (hidden for security)"
+    echo ""
+}
+
 # Azure REST API endpoints
-get_keyvault_secret() {
+get_az_key_vault_secret() {
     local secret_name=$1
     local access_token=$2
     local vault_name=$3
@@ -140,8 +180,9 @@ done
 access_token=$(get_access_token "https://vault.azure.net" "$MANAGED_IDENTITY_CLIENT_ID")
 
 # Get secrets from Azure Key Vault
-SFTP_USER=$(get_keyvault_secret "$SFTP_USERNAME_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
-SFTP_PASSWORD=$(get_keyvault_secret "$SFTP_PASSWORD_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
+SFTP_USER=$(get_az_key_vault_secret "$SFTP_USERNAME_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
+SFTP_PASSWORD=$(get_az_key_vault_secret "$SFTP_PASSWORD_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
+
 
 # Check if secrets were retrieved
 if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then

@@ -239,7 +239,7 @@ stream_file_to_blob() {
     local blob_name=$4
     local chunk_size=${5:-67108864}  # Default to 64 MB
 
-    declare -a BLOCK_ID_LIST  # Ensure BLOCK_ID_LIST is declared as an array
+    declare -a BLOCK_ID_LIST
     BLOCK_INDEX=0
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
@@ -259,13 +259,10 @@ stream_file_to_blob() {
     fi
 
     echo "Connecting to $SFTP_HOST via $PROTOCOL..."
-
     full_command="$command $options -e \"$fetch_command\""
-
     echo "Running command: $full_command"
 
-    # Stream the data directly in chunks using dd
-    eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while read -r -n "$chunk_size" chunk; do
+    eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while read -r -n "$chunk_size" -d '' chunk; do
         if [ -z "$chunk" ]; then
             echo "No more data to process. Ending the transfer."
             break

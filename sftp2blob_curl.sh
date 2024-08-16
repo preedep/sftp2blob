@@ -293,18 +293,31 @@ stream_file_to_blob() {
             # Append BLOCK_ID to a file
             echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
 
+            # Upload the chunk
             echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
 
             if [ $? -ne 0 ]; then
                 echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
                 exit 1
             fi
+        done
 
-            # Check if the last chunk was smaller than chunk_size, indicating the end of the file
-            if [ "$chunk_size_uploaded" -lt "$chunk_size" ]; then
-                echo "Last chunk processed, ending the loop."
+        # If the last chunk was processed, ensure it's the final chunk and check for leftover data
+        while true; do
+            leftover_chunk=$(dd bs=1 count=1 iflag=fullblock 2>/dev/null)
+            if [ -z "$leftover_chunk" ]; then
                 break
             fi
+
+            # Handle any remaining data that wasn't fully processed
+            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+            BLOCK_INDEX=$((BLOCK_INDEX + 1))
+
+            echo "Uploading leftover data with Block ID $BLOCK_ID..."
+
+            echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
+
+            echo -n "$leftover_chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
         done
     }
 

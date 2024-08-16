@@ -259,21 +259,23 @@ stream_file_to_blob() {
 
     echo "Connecting to $SFTP_HOST via $PROTOCOL..."
 
-    connection_log=$(mktemp)
     full_command="$command $options -e \"$fetch_command\""
 
-    # Stream the data and process it in chunks directly, avoiding large memory usage
-    eval "$full_command" | dd bs="$chunk_size" | while read -r -d '' -n "$chunk_size" chunk; do
-        chunk_size_bytes=${#chunk}
+    # Stream the data directly in chunks
+    eval "$full_command" | while true; do
+        # Read a chunk of data
+        chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
 
-        if [ "$chunk_size_bytes" -eq 0 ]; then
+        if [ -z "$chunk" ]; then
+            echo "No more data to process. Ending the transfer."
             break
         fi
 
         BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
-        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_bytes bytes)..."
+        # Upload the chunk to Azure Blob Storage
+        echo "Uploading chunk with Block ID $BLOCK_ID..."
         echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done
 

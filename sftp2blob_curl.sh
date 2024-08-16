@@ -249,7 +249,7 @@ stream_file_to_blob() {
         fetch_command="get -o - $REMOTE_FILE_PATH"
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
-        options="-d -u $SFTP_USER,$SFTP_PASSWORD -p $SFTP_PORT $SFTP_HOST"
+        options="-u $SFTP_USER,$SFTP_PASSWORD -p $SFTP_PORT $SFTP_HOST"
         fetch_command="set ftp:passive-mode on; cat $REMOTE_FILE_PATH; bye"
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"

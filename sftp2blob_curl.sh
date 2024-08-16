@@ -264,8 +264,9 @@ stream_file_to_blob() {
 
     echo "Running command: $full_command"
 
-    eval "$full_command" | dd bs="$chunk_size" | while read -r -d '' chunk; do
-        if [ -n "$chunk" ]; then  # Ensure the chunk is not empty
+    # Stream the data directly in chunks
+    eval "$full_command" | dd bs="$chunk_size" iflag=fullblock | while IFS= read -r -n $chunk_size chunk; do
+        if [ -n "$chunk" ]; then
             BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
             BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
@@ -283,13 +284,14 @@ stream_file_to_blob() {
         exit 1
     fi
 
+    # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
     for block in "${BLOCK_ID_LIST[@]}"; do
         BLOCK_LIST_XML+="$block"
     done
     BLOCK_LIST_XML+="</BlockList>"
 
-    echo "$BLOCK_LIST_XML" > block_list.xm
+    echo "$BLOCK_LIST_XML" > block_list.xml
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
 

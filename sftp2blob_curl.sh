@@ -277,6 +277,7 @@ stream_file_to_blob() {
     echo "Connected successfully. Starting to fetch and upload the file..."
 
     # Stream the file in chunks and upload each chunk directly
+    echo "Debug: Chunk content: $chunk"
     while IFS= read -r -d '' chunk; do
         BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")

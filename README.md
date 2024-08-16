@@ -1,7 +1,7 @@
 # SFTP2Blob - A simple shell script (Linux) to copy files from SFTP/FTPs/FTP to Azure Blob Storage
 
-This script is a simple shell script that copies files from SFTP or FTPs or FTP to Azure Blob Storage. 
-It uses the `sftp` or `lftp` command to connect to the SFTP server and `azcopy` to copy files to Azure Blob Storage.
+This script is a simple shell script that copies files from SFTP or FTPs or FTP Server to Azure Blob Storage. 
+It uses the `sftp` or `lftp` command to connect to the SFTP/FTPs/FTP server and `azcopy` to copy files to Azure Blob Storage.
 The script uses the **Azure Key Vault to store the SFTP/FTPs username and password**. and **specific managed identity** to access Azure Key Vault and Azure Blob Storage.
 
 ## Diagram

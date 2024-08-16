@@ -17,6 +17,7 @@ COPY sftp2blob_curl.sh /usr/local/bin/sftp2blob_curl.sh
 
 # Make the script executable
 RUN chmod +x /usr/local/bin/sftp2blob_curl.sh
+RUN chmod +w /usr/local/bin
 
 # Set the default command to execute the script
 ENTRYPOINT ["/usr/local/bin/sftp2blob_curl.sh"]

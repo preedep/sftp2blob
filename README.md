@@ -4,6 +4,11 @@ This script is a simple shell script that copies files from SFTP or FTPs or FTP 
 It uses the `sftp` or `lftp` command to connect to the SFTP/FTPs/FTP server and `azcopy` to copy files to Azure Blob Storage.
 The script uses the **Azure Key Vault to store the SFTP/FTPs username and password**. and **specific managed identity** to access Azure Key Vault and Azure Blob Storage.
 
+I've 2 versions of the script:
+1. `sftp2blob.sh` - The basic version of the script that uses the `sftp` or `lftp` command to connect to the SFTP/FTPs/FTP server and `azcopy` to copy files to Azure Blob Storage.
+2. `sftp2blob_curl.sh` - The enhanced version of the script that uses `curl` to connect to the Azure REST API of Azure Key Vault and Azure Blob Storage. (more detail in the enhancements section)
+
+
 ## Diagram
 ```mermaid
 sequenceDiagram
@@ -235,4 +240,29 @@ export MANAGED_IDENTITY_CLIENT_ID=<<client-id>>
 
 # Run the Docker container
 docker run -it --rm --name sftp2blob sftp2blob-img:latest
+```
+
+## SFTP2BLOB enhancements
+After implementing the basic functionality of the script, you can enhance the script with the following features:
+- Reduce software dependencies like a Azure CLI , AzCopy , Python , etc.
+- Uses curl for Azure REST API of Azure key vault and Blob Storage
+- Streaming the file from SFTP/FTPs/FTP to Azure Blob Storage (without saving the file to local)
+- Enhance memory usage and performance
+
+new script: `sftp2blob_curl.sh`
+
+### Example (for CLI arguments or Environment Variables is same as above)
+```bash
+./sftp2blob_curl.sh --protocol ftp \
+    --host localhost \
+    --port 22 \
+    --remote /upload/test.csv \
+    --local test.csv \
+    --storage-account nickdevstorage003 \
+    --container datas \
+    --blob test.csv \
+    --vault nickkvdev001 \
+    --username-secret FTP-USER \
+    --password-secret FTP-PASSWORD \
+    --identity <<client-id>> of managed identity
 ```

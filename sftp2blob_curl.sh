@@ -66,20 +66,19 @@ print_debug_info() {
     echo "  SFTP_PASSWORD: (hidden for security)"
     echo ""
 }
-
 # Function to retrieve a secret from Azure Key Vault
 get_az_key_vault_secret() {
     local secret_name=$1
     local access_token=$2
     local vault_name=$3
 
-    # Make the API request
-    response=$(curl -s -w "%{http_code}" -H "Authorization: Bearer $access_token" \
+    # Make the API request and capture the response and status code separately
+    response=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $access_token" \
                 "https://${vault_name}.vault.azure.net/secrets/${secret_name}?api-version=${AZURE_KEY_VAULT_API_VERSION}")
 
     # Extract the body and the status code
-    http_body=$(echo "$response" | sed -e 's/[0-9]*$//')
-    http_status=$(echo "$response" | tail -n1)
+    http_body=$(echo "$response" | sed '$ d')  # Everything except the last line
+    http_status=$(echo "$response" | tail -n1) # The last line is the status code
 
     # Check if the request was successful
     if [ "$http_status" -ne 200 ]; then

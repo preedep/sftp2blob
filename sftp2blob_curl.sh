@@ -281,12 +281,11 @@ stream_file_to_blob() {
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         # Verify and print the size of each chunk
-        chunk_size=$(echo -n "$chunk" | wc -c)
-        echo "Chunk size: $chunk_size bytes"
+        chunk_size_bytes=$(echo -n "$chunk" | wc -c)
+        echo "Chunk size: $chunk_size_bytes bytes"
 
         # Upload the current chunk to Azure Blob Storage
-        echo "Uploading chunk with block ID $BLOCK_ID..."
-        echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done < <(eval "$full_command" | split -b "$chunk_size" -a 6 -d --filter='cat')
 
     # Clean up the connection log

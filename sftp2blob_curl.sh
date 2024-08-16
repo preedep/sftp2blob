@@ -261,31 +261,26 @@ stream_file_to_blob() {
 
     full_command="$command $options -e \"$fetch_command\""
 
-    # Stream the data directly in chunks using dd
+    # Stream the data directly in chunks using dd and pipe it directly to the upload function
     eval "$full_command" | while :; do
-        # Generate a temporary file to store the chunk
-        chunk_file=$(mktemp)
-
-        # Read a chunk of data directly into the file
-        dd bs="$chunk_size" count=1 iflag=fullblock of="$chunk_file" 2>/dev/null
-
-        if [ ! -s "$chunk_file" ]; then
-            echo "No more data to process. Ending the transfer."
-            rm -f "$chunk_file"
-            break
-        fi
-
         # Generate a unique block ID for each chunk
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-        # Upload the chunk to Azure Blob Storage
+        # Read a chunk of data and upload it directly
         echo "Uploading chunk with Block ID $BLOCK_ID..."
-        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
+        dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
 
-        # Clean up the temporary chunk file
-        rm -f "$chunk_file"
+        # Check the size of the chunk that was just uploaded
+        chunk_size_uploaded=$(dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null | wc -c)
+        echo "Chunk size uploaded: $chunk_size_uploaded bytes"
+
+        # If the chunk size is zero, break the loop (end of file)
+        if [ "$chunk_size_uploaded" -eq 0 ]; then
+            echo "No more data to process. Ending the transfer."
+            break
+        fi
     done
 
     # Create the block list XML

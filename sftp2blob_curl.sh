@@ -241,9 +241,6 @@ stream_file_to_blob() {
     BLOCK_ID_LIST=()
     BLOCK_INDEX=0
 
-    # Ignore SIGPIPE to prevent broken pipe errors from showing
-    trap '' PIPE
-
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
 
     if [ "$PROTOCOL" == "sftp" ]; then
@@ -265,18 +262,29 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
 
     # Stream the data directly in chunks using dd
-    eval "$full_command" | dd bs="$chunk_size" | while IFS= read -r -d '' chunk; do
-        if [ -z "$chunk" ]; then
+    eval "$full_command" | while :; do
+        # Generate a temporary file to store the chunk
+        chunk_file=$(mktemp)
+
+        # Read a chunk of data directly into the file
+        dd bs="$chunk_size" count=1 iflag=fullblock of="$chunk_file" 2>/dev/null
+
+        if [ ! -s "$chunk_file" ]; then
             echo "No more data to process. Ending the transfer."
+            rm -f "$chunk_file"
             break
         fi
 
+        # Generate block ID
         BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         # Upload the chunk to Azure Blob Storage
         echo "Uploading chunk with Block ID $BLOCK_ID..."
-        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
+
+        # Clean up the temporary chunk file
+        rm -f "$chunk_file"
     done
 
     # Create the block list XML

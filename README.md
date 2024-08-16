@@ -74,16 +74,31 @@ Example usage: Command line arguments
 ./sftp2blob.sh --protocol ftps --host new-host.example.com --port 2222 --remote /new/remote/path --local /new/local/path
 ````
 
-## Prerequisites for run the script on Linux Server
+## Prerequisites 
+### software dependencies on Linux Server
 but if you run with docker you don't need to install the following tools. my dockerfile already installed all the tools.
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
 - [lftp](https://lftp.yar.ru/)
 - [sftp](https://linuxize.com/post/how-to-use-linux-sftp-command-to-transfer-files/)
 - [jq](https://stedolan.github.io/jq/)
+### Azure Resources
+- Azure VM (Linux) (for run the script)
 - Azure Blob Storage account
 - Azure Key Vault (store the SFTP/FTPs user/password)
+- Azure Managed Identity (for access Azure Key Vault and Azure Blob Storage)
 
+#### From Azure Portal
+Key Vault - Secrets
+![Key Vault - Secrets](imgs/keyvault.png)
+
+Azure Blob Storage - Containers (Output after run script)
+![Azure Blob Storage - Containers](imgs/blobstorage.png)
+
+Managed Identity 
+![Managed Identity](imgs/msi1.png)
+Attach the managed identity to the Azure VM (Linux)
+![Attach the managed identity to the Azure VM (Linux)](imgs/msi2.png)
 
 ## Azure CLI (Add extensions)
 For this script will add all available extensions to the Azure CLI.
@@ -164,13 +179,6 @@ INFO: Logout succeeded.
 File transfer completed successfully.
 
 ```
-## From Azure Portal
-Key Vault - Secrets
-![Key Vault - Secrets](imgs/keyvault.png)
-
-Azure Blob Storage - Containers (Output after run script)
-![Azure Blob Storage - Containers](imgs/blobstorage.png)
-
 ## For Docker
 Build the Docker image
 ```bash

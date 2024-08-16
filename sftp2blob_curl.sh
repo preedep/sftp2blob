@@ -259,34 +259,23 @@ stream_file_to_blob() {
 
     echo "Connecting to $SFTP_HOST via $PROTOCOL..."
 
-    # Directly stream the data and handle it based on size
-    $full_command | {
-        total_bytes=0
-        current_chunk=""
-        while IFS= read -r -d '' -n 1 byte; do
-            current_chunk+="$byte"
-            ((total_bytes++))
+    connection_log=$(mktemp)
+    full_command="$command $options -e \"$fetch_command\""
 
-            # If the current chunk reaches the chunk size, process it
-            if [ ${#current_chunk} -ge $chunk_size ]; then
-                BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
-                BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+    # Stream the data and process it in chunks directly, avoiding large memory usage
+    eval "$full_command" | dd bs="$chunk_size" | while read -r -d '' -n "$chunk_size" chunk; do
+        chunk_size_bytes=${#chunk}
 
-                echo "Uploading chunk of size ${#current_chunk} bytes with Block ID $BLOCK_ID..."
-                echo -n "$current_chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-                current_chunk=""
-            fi
-        done
-
-        # Process any remaining data that didn't fill a full chunk
-        if [ -n "$current_chunk" ]; then
-            BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
-            BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
-
-            echo "Uploading final chunk of size ${#current_chunk} bytes with Block ID $BLOCK_ID..."
-            echo -n "$current_chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        if [ "$chunk_size_bytes" -eq 0 ]; then
+            break
         fi
-    }
+
+        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
+        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+
+        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_bytes bytes)..."
+        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+    done
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"

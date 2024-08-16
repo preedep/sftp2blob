@@ -72,22 +72,20 @@ get_az_key_vault_secret() {
     local access_token=$2
     local vault_name=$3
 
-    # Make the API request and capture the response and status code separately
+    echo "Retrieving secret '$secret_name' from Azure Key Vault..."
+
     response=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $access_token" \
                 "https://${vault_name}.vault.azure.net/secrets/${secret_name}?api-version=${AZURE_KEY_VAULT_API_VERSION}")
 
-    # Extract the body and the status code
     http_body=$(echo "$response" | sed '$ d')  # Everything except the last line
     http_status=$(echo "$response" | tail -n1) # The last line is the status code
 
-    # Check if the request was successful
     if [ "$http_status" -ne 200 ]; then
         echo "Error: Failed to retrieve secret '${secret_name}' from Key Vault '${vault_name}'. HTTP Status: $http_status"
         echo "Response: $http_body"
         exit 1
     fi
 
-    # Return the secret value
     echo "$http_body" | jq -r '.value'
 }
 
@@ -98,6 +96,8 @@ upload_chunk_to_azure_blob() {
     local container_name=$3
     local blob_name=$4
     local block_id=$5
+
+    echo "Uploading chunk with Block ID $block_id..."
 
     response=$(curl -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
@@ -125,6 +125,8 @@ commit_blocks_to_azure_blob() {
     local blob_name=$4
     local block_list_xml=$5
 
+    echo "Committing blocks to finalize the blob..."
+
     response=$(curl -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
@@ -141,8 +143,6 @@ commit_blocks_to_azure_blob() {
 
     echo "Successfully committed blocks to create the final blob."
 }
-
-
 # Function to obtain an access token for Azure services using managed identity
 get_access_token() {
     local resource=$1
@@ -244,6 +244,7 @@ stream_file_to_blob() {
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
 
+    # Determine the command to fetch the file based on the protocol
     if [ "$PROTOCOL" == "sftp" ]; then
         command="sftp"
         options="-P $SFTP_PORT $SFTP_USER@$SFTP_HOST"
@@ -263,7 +264,7 @@ stream_file_to_blob() {
     echo "Running command: $full_command"
 
     # Stream the data directly in chunks using dd
-    while IFS= read -r -d '' chunk; do
+    eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while IFS= read -r -d '' chunk; do
         if [ -z "$chunk" ]; then
             echo "No more data to process. Ending the transfer."
             break
@@ -278,7 +279,7 @@ stream_file_to_blob() {
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-    done < <(eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | tr -d '\0')
+    done
 
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
         echo "Error: No blocks were uploaded. The block list is empty."

@@ -310,6 +310,10 @@ stream_file_to_blob() {
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
 
+# Check if the access token was retrieved
+rm -f block_list.xml  # Clean up the block list file
+rm -f final_block_list.xml  # Clean up the final block list file
+
 # Call the function to upload the file in chunks
 stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 

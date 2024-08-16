@@ -327,6 +327,8 @@ stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_N
 echo "Testing static file upload..."
 echo "Hello World" > /tmp/testfile.txt
 upload_chunk_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$(printf '%06d' 0 | base64)" < /tmp/testfile.txt
+commit_blocks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "<BlockList><Latest>$(printf '%06d' 0 | base64)</Latest></BlockList>"
+
 
 echo "All operations completed successfully."
 exit 0  # Explicitly exit the script to prevent looping

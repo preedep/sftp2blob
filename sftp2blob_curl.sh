@@ -231,7 +231,6 @@ fi
 echo "Successfully retrieved credentials from Azure Key Vault."
 
 # Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
-# Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -274,10 +273,10 @@ stream_file_to_blob() {
     fi
 
     # Stream the file in chunks and upload each chunk directly
-    echo "$output" | split -b "$chunk_size" -a 6 -d --filter='cat' | while IFS= read -r -d '' chunk; do
-        echo "Processing chunk..."
+    echo "$output" | split -b "$chunk_size" -a 6 -d --additional-suffix=.chunk | while read -r chunk_file; do
+        echo "Processing chunk file: $chunk_file"
 
-        if [ -z "$chunk" ]; then
+        if [ ! -s "$chunk_file" ]; then
             echo "Error: Encountered an empty chunk. Skipping..."
             continue
         fi
@@ -286,14 +285,17 @@ stream_file_to_blob() {
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         # Verify and print the size of each chunk
-        chunk_size_bytes=$(echo -n "$chunk" | wc -c)
+        chunk_size_bytes=$(wc -c < "$chunk_file")
         echo "Chunk size: $chunk_size_bytes bytes"
 
         # Print the chunk content (first 100 characters for brevity)
-        echo "Debug: Chunk content (first 100 chars): ${chunk:0:100}"
+        echo "Debug: Chunk content (first 100 chars): $(head -c 100 "$chunk_file")"
 
         # Upload the current chunk to Azure Blob Storage
-        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
+
+        # Remove the temporary chunk file
+        rm "$chunk_file"
     done
 
     # Create the block list XML

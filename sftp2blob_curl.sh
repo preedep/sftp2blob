@@ -239,7 +239,7 @@ stream_file_to_blob() {
     local blob_name=$4
     local chunk_size=${5:-67108864}  # Default to 64 MB
 
-    BLOCK_ID_LIST=()
+    declare -a BLOCK_ID_LIST  # Ensure BLOCK_ID_LIST is declared as an array
     BLOCK_INDEX=0
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
@@ -280,11 +280,11 @@ stream_file_to_blob() {
 
         echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
-        echo "Block id list :  $BLOCK_ID_LIST"
+
+        echo "Current Block ID List: ${BLOCK_ID_LIST[@]}"  # Debugging: Show the current block list
 
         echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done
-    echo "Block id list :  $BLOCK_ID_LIST"
 
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
         echo "Error: No blocks were uploaded. The block list is empty."

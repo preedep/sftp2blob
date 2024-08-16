@@ -323,5 +323,10 @@ access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_
 # Call the function to upload the file in chunks
 stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
+
+echo "Testing static file upload..."
+echo "Hello World" > /tmp/testfile.txt
+upload_chunk_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$(printf '%06d' 0 | base64)" < /tmp/testfile.txt
+
 echo "All operations completed successfully."
 exit 0  # Explicitly exit the script to prevent looping

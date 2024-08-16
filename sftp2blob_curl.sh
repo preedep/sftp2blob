@@ -265,6 +265,8 @@ EOF
         echo "Connecting to $SFTP_HOST via $PROTOCOL..."
 
         connection_log=$(mktemp)
+
+         echo "Executing command: $command $options $fetch_command"
         if ! $command -e "$fetch_command" >"$connection_log" 2>&1; then
             echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
             echo "Connection log:"

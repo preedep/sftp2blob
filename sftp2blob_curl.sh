@@ -144,6 +144,7 @@ commit_blocks_to_azure_blob() {
     fi
 }
 
+
 # Function to obtain an access token for Azure services using managed identity
 get_access_token() {
     local resource=$1

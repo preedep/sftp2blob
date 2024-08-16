@@ -247,6 +247,11 @@ stream_file_to_blob() {
 
     declare -a BLOCK_ID_LIST  # Ensure BLOCK_ID_LIST is declared as an array
     BLOCK_INDEX=0
+    block_list_file="block_list.xml"
+    final_block_list_file="final_block_list.xml"
+
+    # Clean up old block list files if they exist
+    rm -f "$block_list_file" "$final_block_list_file"
 
     echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
 
@@ -271,35 +276,38 @@ stream_file_to_blob() {
 
     # Stream the data directly in chunks using dd
     eval "$full_command" | dd bs="$chunk_size" iflag=fullblock 2>/dev/null | while IFS= read -r -d '' chunk; do
-    if [ -z "$chunk" ]; then
-        echo "No more data to process. Ending the transfer."
-        break
-    fi
+        if [ -z "$chunk" ]; then
+            echo "No more data to process. Ending the transfer."
+            break
+        fi
 
-    BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-    BLOCK_INDEX=$((BLOCK_INDEX + 1))
+        BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+        BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-    chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
+        chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
 
-    echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
 
-    # Append BLOCK_ID to a file
-    echo "<Latest>$BLOCK_ID</Latest>" >> block_list.xml
+        # Append BLOCK_ID to a file
+        echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
 
-    echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
+            exit 1
+        fi
     done
 
-    if [ -f block_list.xml ]; then
-        echo "Block list file created successfully."
-    else
+    if [ ! -f "$block_list_file" ]; then
         echo "Error: Failed to create the block list file."
         exit 1
     fi
 
-    echo "<BlockList>" > final_block_list.xml
-    cat block_list.xml >> final_block_list.xml
-    echo "</BlockList>" >> final_block_list.xml
-    BLOCK_LIST_XML=$(<final_block_list.xml)
+    echo "<BlockList>" > "$final_block_list_file"
+    cat "$block_list_file" >> "$final_block_list_file"
+    echo "</BlockList>" >> "$final_block_list_file"
+    BLOCK_LIST_XML=$(<"$final_block_list_file")
 
     # Check if BLOCK_LIST_XML is empty
     if [ -z "$BLOCK_LIST_XML" ]; then
@@ -307,9 +315,13 @@ stream_file_to_blob() {
         exit 1
     fi
 
-
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
+
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to commit blocks to Azure Blob Storage."
+        exit 1
+    fi
 
     echo "File transfer completed successfully."
 }

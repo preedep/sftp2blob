@@ -309,6 +309,8 @@ stream_file_to_blob() {
     done
     BLOCK_LIST_XML+="</BlockList>"
 
+    echo "$BLOCK_LIST_XML" > block_list.xml
+
     # Commit the blocks to create the final blob
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
@@ -324,10 +326,10 @@ access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_
 stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
 
-echo "Testing static file upload..."
-echo "Hello World" > /tmp/testfile.txt
-upload_chunk_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$(printf '%06d' 0 | base64)" < /tmp/testfile.txt
-commit_blocks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "<BlockList><Latest>$(printf '%06d' 0 | base64)</Latest></BlockList>"
+#echo "Testing static file upload..."
+#echo "Hello World" > /tmp/testfile.txt
+#upload_chunk_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$(printf '%06d' 0 | base64)" < /tmp/testfile.txt
+#commit_blocks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "<BlockList><Latest>$(printf '%06d' 0 | base64)</Latest></BlockList>"
 
 
 echo "All operations completed successfully."

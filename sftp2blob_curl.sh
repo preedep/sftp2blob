@@ -294,11 +294,12 @@ stream_file_to_blob() {
     echo "</BlockList>" >> final_block_list.xml
     BLOCK_LIST_XML=$(<final_block_list.xml)
 
-
-    if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
-        echo "Error: No blocks were uploaded. The block list is empty."
+    # Check if BLOCK_LIST_XML is empty
+    if [ -z "$BLOCK_LIST_XML" ]; then
+        echo "Error: The block list is empty."
         exit 1
     fi
+
 
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"

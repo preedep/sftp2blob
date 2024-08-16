@@ -273,7 +273,8 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
     echo "Running command: $full_command"
 
-    eval "$full_command" | {
+    # Stream the data directly in chunks
+    eval "$full_command" 2>/dev/null | {
         while true; do
             # Read a chunk from the remote file
             chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
@@ -333,6 +334,7 @@ stream_file_to_blob() {
 
     echo "File transfer completed successfully."
 }
+
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")

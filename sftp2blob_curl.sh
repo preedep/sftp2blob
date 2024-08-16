@@ -237,7 +237,6 @@ fi
 print_debug_info
 
 echo "Successfully retrieved credentials from Azure Key Vault."
-
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -274,7 +273,6 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
     echo "Running command: $full_command"
 
-    # Stream the data directly in chunks
     eval "$full_command" | {
         while true; do
             # Read a chunk from the remote file
@@ -307,24 +305,6 @@ stream_file_to_blob() {
                 break
             fi
         done
-
-        # If the file size is less than chunk_size, ensure it is still processed correctly
-        if [ $BLOCK_INDEX -eq 0 ]; then
-            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-            BLOCK_INDEX=$((BLOCK_INDEX + 1))
-
-            echo "Uploading entire small file with Block ID $BLOCK_ID..."
-
-            # Append BLOCK_ID to a file
-            echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
-
-            echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-
-            if [ $? -ne 0 ]; then
-                echo "Error: Failed to upload the small file with Block ID $BLOCK_ID"
-                exit 1
-            fi
-        fi
     }
 
     if [ ! -f "$block_list_file" ]; then
@@ -353,21 +333,13 @@ stream_file_to_blob() {
 
     echo "File transfer completed successfully."
 }
-
 # Obtain access token for Azure Storage
 echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
-
-# Check if the access token was retrieved
-rm -f block_list.xml  # Clean up the block list file
-rm -f final_block_list.xml  # Clean up the final block list file
 
 # Call the function to upload the file in chunks
 stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
 echo "All operations completed successfully."
-
-rm -f block_list.xml  # Clean up the block list file
-rm -f final_block_list.xml  # Clean up the final block list file
 
 exit 0  # Explicitly exit the script to prevent looping

@@ -236,7 +236,7 @@ stream_file_to_blob() {
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_size=${5:-16777216}  # Change to 16 MB (16 * 1024 * 1024)
+    local chunk_size=${5:-67108864}  # Change to 64 MB (64 * 1024 * 1024)
 
     BLOCK_ID_LIST=()
     BLOCK_INDEX=0

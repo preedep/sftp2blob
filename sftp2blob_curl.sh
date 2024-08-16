@@ -261,7 +261,6 @@ access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_
 upload_file_in_chunks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$LOCAL_FILE_PATH"
 
 # Cleanup (optional)
-rm -f "${LOCAL_FILE_PATH}.chunk.*"
 rm -f "$LOCAL_FILE_PATH"
 
 echo "File transfer completed successfully."

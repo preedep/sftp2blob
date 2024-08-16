@@ -1,0 +1,18 @@
+# Use the official Alpine Linux as the base image
+FROM alpine:latest
+
+# Install required packages
+RUN apk add --no-cache bash curl jq
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy your script into the container
+COPY sftp2blob_curl.sh /app/sftp2blob_curl.sh
+
+# Make the script executable
+RUN chmod +x /app/sftp2blob_curl.sh
+
+
+# Set the default command to run your script
+CMD ["/app/sftp2blob_curl.sh"]

@@ -219,28 +219,46 @@ EOF
 # Download file using specified protocol
 download_file
 
+# Function to upload a file in chunks to Azure Blob Storage
+upload_file_in_chunks_to_azure_blob() {
+    local access_token=$1
+    local storage_account=$2
+    local container_name=$3
+    local blob_name=$4
+    local local_file_path=$5
+    local chunk_size=${6:-4194304}  # Default to 4 MB
+
+    # Initialize variables
+    BLOCK_ID_LIST=()
+    BLOCK_INDEX=0
+
+    # Split the file into chunks and upload each chunk
+    while IFS= read -r -d '' chunk; do
+        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)))
+        BLOCK_ID_B64=$(echo -n "$BLOCK_ID" | base64)
+        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID_B64</Latest>")
+        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$chunk" "$BLOCK_ID_B64"
+    done < <(split -b "$chunk_size" -a 6 -d --additional-suffix=.chunk "$local_file_path" "${local_file_path}.chunk.")
+
+    # Create the block list XML
+    BLOCK_LIST_XML="<BlockList>"
+    for block in "${BLOCK_ID_LIST[@]}"; do
+        BLOCK_LIST_XML+="$block"
+    done
+    BLOCK_LIST_XML+="</BlockList>"
+
+    # Commit the blocks to create the final blob
+    commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
+
+    # Cleanup (optional)
+    rm -f "${local_file_path}.chunk.*"
+}
+
 # Obtain access token for Azure Storage
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
 
-# Split the file into chunks and upload each chunk
-CHUNK_SIZE=4194304  # 4 MB
-BLOCK_ID_LIST=()
-while IFS= read -r -d '' chunk; do
-    BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)))
-    BLOCK_ID_B64=$(echo -n "$BLOCK_ID" | base64)
-    BLOCK_ID_LIST+=("<Latest>$BLOCK_ID_B64</Latest>")
-    upload_chunk_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$chunk" "$BLOCK_ID_B64"
-done < <(split -b "$CHUNK_SIZE" -a 6 -d --additional-suffix=.chunk "$LOCAL_FILE_PATH" "${LOCAL_FILE_PATH}.chunk.")
-
-# Create the block list XML
-BLOCK_LIST_XML="<BlockList>"
-for block in "${BLOCK_ID_LIST[@]}"; do
-    BLOCK_LIST_XML+="$block"
-done
-BLOCK_LIST_XML+="</BlockList>"
-
-# Commit the blocks to create the final blob
-commit_blocks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$BLOCK_LIST_XML"
+# Call the function to upload the file in chunks
+upload_file_in_chunks_to_azure_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME" "$LOCAL_FILE_PATH"
 
 # Cleanup (optional)
 rm -f "${LOCAL_FILE_PATH}.chunk.*"

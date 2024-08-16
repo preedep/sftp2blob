@@ -264,26 +264,21 @@ stream_file_to_blob() {
 
     echo "Running command: $full_command"
 
-    eval "$full_command" | while read -r line; do
+    eval "$full_command" | dd bs="$chunk_size" | while read -r -d '' chunk; do
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-        chunk_file=$(mktemp)
-        echo "$line" > "$chunk_file"
-
-        chunk_size_uploaded=$(stat -c%s "$chunk_file")
+        chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
 
         if [ "$chunk_size_uploaded" -eq 0 ]; then
             echo "No more data to process. Ending the transfer."
-            rm -f "$chunk_file"
             break
         fi
 
         echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
-        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
-        rm -f "$chunk_file"
+        echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done
 
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then

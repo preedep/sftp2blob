@@ -183,7 +183,7 @@ access_token=$(get_access_token "https://vault.azure.net" "$MANAGED_IDENTITY_CLI
 SFTP_USER=$(get_az_key_vault_secret "$SFTP_USERNAME_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
 SFTP_PASSWORD=$(get_az_key_vault_secret "$SFTP_PASSWORD_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
 
-
+print_debug_info
 # Check if secrets were retrieved
 if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
     echo "Failed to retrieve credentials from Azure Key Vault."

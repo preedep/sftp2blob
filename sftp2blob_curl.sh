@@ -283,7 +283,7 @@ stream_file_to_blob() {
         # Upload the current chunk to Azure Blob Storage
         echo "Uploading chunk with block ID $BLOCK_ID..."
         echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-    done < <(eval "$full_command" | split -b "$chunk_size" -a 6 -d)
+    done < <(eval "$full_command" | split -b "$chunk_size" --filter='cat')
 
     # Clean up the connection log
     rm "$connection_log"
@@ -298,9 +298,6 @@ stream_file_to_blob() {
     # Commit the blocks to create the final blob
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
-
-    # Cleanup any remaining local chunk files (if any)
-    rm -f "${LOCAL_FILE_PATH}.chunk.*"
 
     echo "File transfer completed successfully."
 }

@@ -289,6 +289,13 @@ stream_file_to_blob() {
     echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done
 
+    if [ -f block_list.xml ]; then
+        echo "Block list file created successfully."
+    else
+        echo "Error: Failed to create the block list file."
+        exit 1
+    fi
+
     echo "<BlockList>" > final_block_list.xml
     cat block_list.xml >> final_block_list.xml
     echo "</BlockList>" >> final_block_list.xml

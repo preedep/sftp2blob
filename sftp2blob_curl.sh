@@ -388,11 +388,14 @@ stream_file_to_blob_v2() {
 
     eval "$full_command" 2>/dev/null | {
         total_size_uploaded=0
-        local buffer
         while true; do
-            # Read a chunk of data into a buffer, ensuring null bytes are handled properly
-            buffer=$(dd bs="$chunk_size" count=1 2>/dev/null)
-            chunk_size_uploaded=$(echo -n "$buffer" | wc -c)
+            # Read a chunk of data using dd
+            if ! chunk=$(dd bs="$chunk_size" count=1 2>/dev/null); then
+                break
+            fi
+
+            # Check the size of the chunk
+            chunk_size_uploaded=${#chunk}
 
             echo "Debug: Chunk size read: $chunk_size_uploaded bytes"
 
@@ -408,9 +411,7 @@ stream_file_to_blob_v2() {
             echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
 
             # Upload the chunk to Azure Blob Storage
-            echo -n "$buffer" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-
-            if [ $? -ne 0 ]; then
+            if ! echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"; then
                 echo "Error: Failed to upload chunk with Block ID $BLOCK_ID"
                 exit 1
             fi
@@ -435,7 +436,7 @@ stream_file_to_blob_v2() {
     echo "<BlockList>" > "$final_block_list_file"
     cat "$block_list_file" >> "$final_block_list_file"
     echo "</BlockList>" >> "$final_block_list_file"
-    BLOCK_LIST_XML=$(<"$final_block_list_file")
+    BLOCK_LIST_XML=$(cat "$final_block_list_file")
 
     if [ -z "$BLOCK_LIST_XML" ]; then
         echo "Error: The block list is empty."
@@ -443,9 +444,7 @@ stream_file_to_blob_v2() {
     fi
 
     echo "Committing blocks to finalize the blob..."
-    commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
-
-    if [ $? -ne 0 ]; then
+    if ! commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"; then
         echo "Error: Failed to commit blocks to Azure Blob Storage."
         exit 1
     fi

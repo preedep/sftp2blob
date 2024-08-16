@@ -272,12 +272,16 @@ stream_file_to_blob() {
         exit 1
     fi
 
-    # Stream the file in chunks and upload each chunk directly
-    echo "$output" | split -b "$chunk_size" -a 6 -d --additional-suffix=.chunk | while read -r chunk_file; do
+    # Split the output into chunk files
+    echo "$output" | split -b "$chunk_size" -a 6 -d chunk_
+
+    # Loop through the chunk files
+    for chunk_file in chunk_*; do
         echo "Processing chunk file: $chunk_file"
 
         if [ ! -s "$chunk_file" ]; then
             echo "Error: Encountered an empty chunk. Skipping..."
+            rm "$chunk_file"
             continue
         fi
 

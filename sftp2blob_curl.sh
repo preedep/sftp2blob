@@ -230,6 +230,8 @@ if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
     exit 1
 fi
 
+print_debug_info
+
 echo "Successfully retrieved credentials from Azure Key Vault."
 
 stream_file_to_blob() {

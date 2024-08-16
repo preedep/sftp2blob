@@ -265,20 +265,17 @@ stream_file_to_blob() {
     echo "Running command: $full_command"
 
     eval "$full_command" | dd bs="$chunk_size" | while read -r -d '' chunk; do
-        BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-        BLOCK_INDEX=$((BLOCK_INDEX + 1))
+        if [ -n "$chunk" ]; then  # Ensure the chunk is not empty
+            BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+            BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-        chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
+            chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
 
-        if [ "$chunk_size_uploaded" -eq 0 ]; then
-            echo "No more data to process. Ending the transfer."
-            break
+            echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+            BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+
+            echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
         fi
-
-        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
-        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
-
-        echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done
 
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
@@ -292,7 +289,7 @@ stream_file_to_blob() {
     done
     BLOCK_LIST_XML+="</BlockList>"
 
-    echo "$BLOCK_LIST_XML" > block_list.xml
+    echo "$BLOCK_LIST_XML" > block_list.xm
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
 

@@ -2,7 +2,13 @@
 FROM alpine:latest
 
 # Install required packages
-RUN apk add --no-cache bash curl jq
+RUN apk add --no-cache \
+    bash \
+    openssh-client \
+    lftp \
+    ca-certificates \
+    jq \
+    curl
 
 # Set the working directory inside the container
 WORKDIR /app

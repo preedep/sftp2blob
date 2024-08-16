@@ -230,6 +230,7 @@ fi
 
 echo "Successfully retrieved credentials from Azure Key Vault."
 
+# Function to stream file from SFTP/FTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -273,7 +274,16 @@ stream_file_to_blob() {
     fi
 
     echo "Connected successfully. Starting to fetch and upload the file..."
-    eval "$full_command" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+
+    # Read the file in chunks and upload each chunk directly
+    while IFS= read -r -d '' chunk; do
+        BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
+        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+
+        # Upload the current chunk to Azure Blob Storage
+        echo "Uploading chunk with block ID $BLOCK_ID..."
+        echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+    done < <(eval "$full_command" | split -b "$chunk_size" -a 6 -d)
 
     # Clean up the connection log
     rm "$connection_log"

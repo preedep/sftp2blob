@@ -259,7 +259,8 @@ stream_file_to_blob() {
 
     # Start streaming the file in chunks and uploading each chunk to Azure Blob Storage
     # shellcheck disable=SC2016
-    $command $options | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+    # shellcheck disable=SC2090
+    $command "$options" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"

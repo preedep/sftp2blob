@@ -11,14 +11,12 @@ RUN apk add --no-cache \
     curl
 
 # Set the working directory inside the container
-WORKDIR /app
 
-# Copy your script into the container
-COPY sftp2blob_curl.sh /app/sftp2blob_curl.sh
+# Copy the shell script into the container
+COPY sftp2blob_curl.sh /usr/local/bin/sftp2blob_curl.sh
 
 # Make the script executable
-RUN chmod +x /app/sftp2blob_curl.sh
+RUN chmod +x /usr/local/bin/sftp2blob_curl.sh
 
-
-# Set the default command to run your script
-CMD ["/app/sftp2blob_curl.sh"]
+# Set the default command to execute the script
+ENTRYPOINT ["/usr/local/bin/sftp2blob_curl.sh"]

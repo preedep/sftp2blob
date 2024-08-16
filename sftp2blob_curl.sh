@@ -266,7 +266,6 @@ stream_file_to_blob() {
     echo "Debug: Full command output:"
     eval "$full_command"
 
-
     # Explicitly print the command to be executed
     #echo "Executing command: $full_command"
 
@@ -279,16 +278,25 @@ stream_file_to_blob() {
     fi
 
     echo "Connected successfully. Starting to fetch and upload the file..."
-
     # Stream the file in chunks and upload each chunk directly
-    echo "Debug: Chunk content: $chunk"
     while IFS= read -r -d '' chunk; do
+        if [ -z "$chunk" ]; then
+            echo "Error: Encountered an empty chunk. Skipping..."
+            continue
+        fi
+
         BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
 
         # Verify and print the size of each chunk
         chunk_size_bytes=$(echo -n "$chunk" | wc -c)
         echo "Chunk size: $chunk_size_bytes bytes"
+
+        # Print the chunk content (first 100 characters for brevity)
+        echo "Debug: Chunk content (first 100 chars): ${chunk:0:100}"
+
+        # Print a message when a chunk is being uploaded
+        echo "Uploading chunk with block ID $BLOCK_ID and size $chunk_size_bytes bytes"
 
         # Upload the current chunk to Azure Blob Storage
         echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"

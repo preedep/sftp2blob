@@ -67,12 +67,14 @@ print_debug_info() {
     echo ""
 }
 # Function to retrieve a secret from Azure Key Vault
+# Function to retrieve a secret from Azure Key Vault
 get_az_key_vault_secret() {
     local secret_name=$1
     local access_token=$2
     local vault_name=$3
 
-    echo "Retrieving secret '$secret_name' from Azure Key Vault..."
+    # Print debug information to stderr
+    echo "Retrieving secret '$secret_name' from Azure Key Vault..." >&2
 
     response=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $access_token" \
                 "https://${vault_name}.vault.azure.net/secrets/${secret_name}?api-version=${AZURE_KEY_VAULT_API_VERSION}")
@@ -81,11 +83,13 @@ get_az_key_vault_secret() {
     http_status=$(echo "$response" | tail -n1) # The last line is the status code
 
     if [ "$http_status" -ne 200 ]; then
-        echo "Error: Failed to retrieve secret '${secret_name}' from Key Vault '${vault_name}'. HTTP Status: $http_status"
-        echo "Response: $http_body"
+        # Print errors to stderr
+        echo "Error: Failed to retrieve secret '${secret_name}' from Key Vault '${vault_name}'. HTTP Status: $http_status" >&2
+        echo "Response: $http_body" >&2
         exit 1
     fi
 
+    # Return only the secret value
     echo "$http_body" | jq -r '.value'
 }
 

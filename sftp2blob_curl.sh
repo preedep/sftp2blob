@@ -252,7 +252,7 @@ stream_file_to_blob() {
         fetch_command="get -o - $REMOTE_FILE_PATH"
     elif [ "$PROTOCOL" == "ftps" ] || [ "$PROTOCOL" == "ftp" ]; then
         command="lftp"
-        options="-u $SFTP_USER,$SFTP_PASSWORD $SFTP_HOST"
+        options="-d -u $SFTP_USER,$SFTP_PASSWORD $SFTP_HOST"
         fetch_command="cat $REMOTE_FILE_PATH"
     else
         echo "Invalid protocol. Please specify --protocol {sftp|ftps|ftp}"
@@ -266,9 +266,8 @@ $fetch_command
 bye
 EOF
     else
-        # Attempt to connect to the FTP/FTPS server and fetch the file
         echo "Connecting to $SFTP_HOST via $PROTOCOL..."
-        if ! $command -e "$fetch_command; bye" > /dev/null 2>&1; then
+        if ! $command -e "$fetch_command; bye"; then
             echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
             exit 1
         fi

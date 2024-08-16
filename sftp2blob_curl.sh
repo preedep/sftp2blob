@@ -261,27 +261,46 @@ stream_file_to_blob() {
 
     full_command="$command $options -e \"$fetch_command\""
 
-    # Stream the data directly in chunks using dd and pipe it directly to the upload function
+    # Stream the data directly in chunks using dd
     eval "$full_command" | while :; do
         # Generate a unique block ID for each chunk
         BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
-        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
         BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
-        # Read a chunk of data and upload it directly
-        echo "Uploading chunk with Block ID $BLOCK_ID..."
-        dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+        # Create a temporary file for the chunk
+        chunk_file=$(mktemp)
 
-        # Check the size of the chunk that was just uploaded
-        chunk_size_uploaded=$(dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null | wc -c)
-        echo "Chunk size uploaded: $chunk_size_uploaded bytes"
+        # Read a chunk of data directly into the file
+        dd bs="$chunk_size" count=1 iflag=fullblock of="$chunk_file" 2>/dev/null
 
-        # If the chunk size is zero, break the loop (end of file)
+        # Get the actual size of the chunk read
+        chunk_size_uploaded=$(stat -c%s "$chunk_file")
+
+        # If the chunk size is zero, we have reached the end of the file
         if [ "$chunk_size_uploaded" -eq 0 ]; then
             echo "No more data to process. Ending the transfer."
+            rm -f "$chunk_file"
             break
         fi
+
+        # Add the block ID to the list
+        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+
+        # Upload the chunk to Azure Blob Storage
+        echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
+        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
+
+        # Clean up the temporary chunk file
+        rm -f "$chunk_file"
     done
+
+    # Ensure the last partial chunk is uploaded if the loop ended before processing it
+    if [ "$chunk_size_uploaded" -ne "$chunk_size" ] && [ "$chunk_size_uploaded" -gt 0 ]; then
+        echo "Uploading final partial chunk..."
+        BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+        BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+        upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID" < "$chunk_file"
+    fi
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"

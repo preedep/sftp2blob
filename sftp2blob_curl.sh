@@ -280,6 +280,7 @@ stream_file_to_blob() {
 
         echo "Uploading chunk with Block ID $BLOCK_ID (Size: $chunk_size_uploaded bytes)..."
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
+        echo "Block id list :  $BLOCK_ID_LIST"
 
         echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done

@@ -390,12 +390,10 @@ stream_file_to_blob_v2() {
         total_size_uploaded=0
         while true; do
             # Read a chunk of data using dd
-            if ! chunk=$(dd bs="$chunk_size" count=1 2>/dev/null); then
-                break
-            fi
+            chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
 
             # Check the size of the chunk
-            chunk_size_uploaded=${#chunk}
+            chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
 
             echo "Debug: Chunk size read: $chunk_size_uploaded bytes"
 
@@ -436,7 +434,7 @@ stream_file_to_blob_v2() {
     echo "<BlockList>" > "$final_block_list_file"
     cat "$block_list_file" >> "$final_block_list_file"
     echo "</BlockList>" >> "$final_block_list_file"
-    BLOCK_LIST_XML=$(cat "$final_block_list_file")
+    BLOCK_LIST_XML=$(<"$final_block_list_file")
 
     if [ -z "$BLOCK_LIST_XML" ]; then
         echo "Error: The block list is empty."

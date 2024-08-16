@@ -283,6 +283,7 @@ stream_file_to_blob() {
 
         echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     done
+    echo "Block id list :  $BLOCK_ID_LIST"
 
     if [ ${#BLOCK_ID_LIST[@]} -eq 0 ]; then
         echo "Error: No blocks were uploaded. The block list is empty."

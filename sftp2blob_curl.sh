@@ -265,10 +265,7 @@ stream_file_to_blob() {
     full_command="$command $options -e \"$fetch_command\""
 
     # Stream the data directly in chunks using dd
-    eval "$full_command" | dd bs="$chunk_size" | while true; do
-        # Read a chunk of data
-        chunk=$(dd bs="$chunk_size" count=1 2>/dev/null)
-
+    eval "$full_command" | dd bs="$chunk_size" | while IFS= read -r -d '' chunk; do
         if [ -z "$chunk" ]; then
             echo "No more data to process. Ending the transfer."
             break

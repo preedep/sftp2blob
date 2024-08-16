@@ -354,7 +354,7 @@ stream_file_to_blob_v2() {
     local storage_account=$2
     local container_name=$3
     local blob_name=$4
-    local chunk_size=${5:-67108864}  # Default to 64 MB (64 * 1024 * 1024)
+    local chunk_size=${5:-1048576}  # Default to 64 MB (64 * 1024 * 1024)
 
     declare -a BLOCK_ID_LIST  # Ensure BLOCK_ID_LIST is declared as an array
     BLOCK_INDEX=0

@@ -90,6 +90,7 @@ get_az_key_vault_secret() {
     # Return the secret value
     echo "$http_body" | jq -r '.value'
 }
+
 # Function to upload a chunk to Azure Blob Storage
 upload_chunk_to_azure_blob() {
     local access_token=$1
@@ -112,7 +113,10 @@ upload_chunk_to_azure_blob() {
         echo "Error: Failed to upload chunk '$block_id' to Azure Blob Storage. HTTP Status: $http_status"
         exit 1
     fi
+
+    echo "Successfully uploaded chunk with block ID $block_id"
 }
+
 # Function to commit the uploaded blocks to Azure Blob Storage
 commit_blocks_to_azure_blob() {
     local access_token=$1
@@ -134,6 +138,8 @@ commit_blocks_to_azure_blob() {
         echo "Error: Failed to commit blocks to Azure Blob Storage. HTTP Status: $http_status"
         exit 1
     fi
+
+    echo "Successfully committed blocks to create the final blob."
 }
 
 
@@ -209,18 +215,21 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Obtain access token for Key Vault
+echo "Obtaining access token for Azure Key Vault..."
 access_token=$(get_access_token "https://vault.azure.net" "$MANAGED_IDENTITY_CLIENT_ID")
 
 # Get secrets from Azure Key Vault
+echo "Retrieving secrets from Azure Key Vault..."
 SFTP_USER=$(get_az_key_vault_secret "$SFTP_USERNAME_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
 SFTP_PASSWORD=$(get_az_key_vault_secret "$SFTP_PASSWORD_SECRET_NAME" "$access_token" "$KEY_VAULT_NAME")
 
-print_debug_info
 # Check if secrets were retrieved
 if [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASSWORD" ]; then
     echo "Failed to retrieve credentials from Azure Key Vault."
     exit 1
 fi
+
+echo "Successfully retrieved credentials from Azure Key Vault."
 
 # Stream file in chunks from FTP/SFTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
@@ -233,6 +242,8 @@ stream_file_to_blob() {
     BLOCK_ID_LIST=()
     # shellcheck disable=SC2034
     BLOCK_INDEX=0
+
+    echo "Starting file transfer from $PROTOCOL server to Azure Blob Storage..."
 
     if [ "$PROTOCOL" == "sftp" ]; then
         command="sftp"
@@ -251,7 +262,6 @@ stream_file_to_blob() {
     fi
 
     # Start streaming the file in chunks and uploading each chunk to Azure Blob Storage
-    # shellcheck disable=SC2016
     # shellcheck disable=SC2090
     $command "$options" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
 
@@ -267,16 +277,15 @@ stream_file_to_blob() {
 
     # Cleanup any remaining local chunk files
     rm -f "${LOCAL_FILE_PATH}.chunk.*"
+
+    echo "File transfer completed successfully."
 }
 
 # Obtain access token for Azure Storage
+echo "Obtaining access token for Azure Storage..."
 access_token=$(get_access_token "https://storage.azure.com/" "$MANAGED_IDENTITY_CLIENT_ID")
 
 # Call the function to upload the file in chunks
-# shellcheck disable=SC2218
 stream_file_to_blob "$access_token" "$AZURE_STORAGE_ACCOUNT" "$AZURE_CONTAINER_NAME" "$AZURE_BLOB_NAME"
 
-# Cleanup (optional)
-rm -f *.chunk
-
-echo "File transfer completed successfully."
+echo "All operations completed successfully."

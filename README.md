@@ -75,7 +75,7 @@ Example usage: Command line arguments
 ````
 
 ## Prerequisites 
-### software dependencies on Linux Server
+### 1) software dependencies on Linux Server
 but if you run with docker you don't need to install the following tools. my dockerfile already installed all the tools.
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
@@ -91,7 +91,7 @@ for extension in $(az extension list-available --query "[].name" -o tsv); do
 done
 ```
 
-### Azure Resources
+### 2) Azure Resources
 - Azure VM (Linux) (for run the script)
 - Azure Blob Storage account
 - Azure Key Vault (store the SFTP/FTPs user/password)

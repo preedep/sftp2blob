@@ -262,18 +262,18 @@ stream_file_to_blob() {
     connection_log=$(mktemp)
     full_command="$command $options -e \"$fetch_command\""
 
-    # Execute the command and capture the output
+    # Execute the command and capture the output size to determine the approach
     output=$(eval "$full_command")
-    echo "Debug: Full command output:"
-    echo "$output"
+    output_size=$(echo -n "$output" | wc -c)
+    echo "Debug: Full command output size: $output_size bytes"
 
     if [ -z "$output" ]; then
         echo "Error: No data was returned by the command. Aborting."
         exit 1
     fi
 
-    # Handle small files directly without splitting
-    if [ ${#output} -lt $chunk_size ]; then
+    if [ $output_size -le $chunk_size ]; then
+        # Handle small files directly without splitting
         echo "Processing small file directly..."
         BLOCK_ID=$(printf '%06d' $((BLOCK_INDEX++)) | base64)
         BLOCK_ID_LIST+=("<Latest>$BLOCK_ID</Latest>")
@@ -281,8 +281,9 @@ stream_file_to_blob() {
         echo "Uploading small file to Azure Blob Storage..."
         echo "$output" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
     else
-        # Split the output into chunk files
-        echo "$output" | split -b "$chunk_size" -a 6 -d chunk_
+        # Handle large files by splitting into chunks
+        echo "Processing large file in chunks..."
+        echo "$output" | split -b "$chunk_size" -a 6 -d - "chunk_"
 
         # Loop through the chunk files
         for chunk_file in chunk_*; do

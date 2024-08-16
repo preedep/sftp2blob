@@ -75,7 +75,7 @@ Example usage: Command line arguments
 ````
 
 ## Prerequisites 
-### 1) software dependencies on Linux Server
+### 1) Software dependencies on Linux Server
 but if you run with docker you don't need to install the following tools. my dockerfile already installed all the tools.
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)

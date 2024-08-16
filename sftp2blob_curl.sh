@@ -99,13 +99,10 @@ upload_chunk_to_azure_blob() {
     local blob_name=$4
     local block_id=$5
 
-    # shellcheck disable=SC1073
     response=$(curl -X PUT -s -w "%{http_code}" \
                 -H "Authorization: Bearer $access_token" \
                 -H "x-ms-blob-type: BlockBlob" \
                 -H "x-ms-version: ${AZURE_STORAGE_API_VERSION}" \
-                # shellcheck disable=SC2153
-                -H "Content-Length: ${CHUNK_SIZE}" \
                 --data-binary @- \
                 "https://${storage_account}.blob.core.windows.net/${container_name}/${blob_name}?comp=block&blockid=${block_id}")
 
@@ -144,7 +141,6 @@ commit_blocks_to_azure_blob() {
     echo "Successfully committed blocks to create the final blob."
 }
 
-
 # Function to obtain an access token for Azure services using managed identity
 get_access_token() {
     local resource=$1
@@ -152,6 +148,7 @@ get_access_token() {
 
     curl -s "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=${resource}&client_id=${client_id}" -H Metadata:true | jq -r '.access_token'
 }
+
 
 # Parse named parameters and override environment variables or defaults
 while [[ $# -gt 0 ]]; do
@@ -233,7 +230,6 @@ fi
 
 echo "Successfully retrieved credentials from Azure Key Vault."
 
-# Stream file in chunks from FTP/SFTP/FTPS to Azure Blob Storage
 stream_file_to_blob() {
     local access_token=$1
     local storage_account=$2
@@ -261,19 +257,28 @@ stream_file_to_blob() {
     fi
 
     if [ "$PROTOCOL" == "sftp" ]; then
+        # Stream the file directly from the SFTP server and upload chunks
         $command $options <<EOF | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
 $fetch_command
 bye
 EOF
     else
         echo "Connecting to $SFTP_HOST via $PROTOCOL..."
-        if ! $command -e "$fetch_command; bye"; then
+
+        connection_log=$(mktemp)
+        if ! $command -e "$fetch_command; bye" >"$connection_log" 2>&1; then
             echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
+            echo "Connection log:"
+            cat "$connection_log"
+            rm "$connection_log"
             exit 1
         fi
 
         echo "Connected successfully. Starting to fetch and upload the file..."
         $command -e "$fetch_command; bye" | split -b "$chunk_size" -a 6 -d --filter 'upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$(printf "%06d" $((BLOCK_INDEX++)) | base64)"'
+
+        # Clean up the connection log
+        rm "$connection_log"
     fi
 
     # Create the block list XML

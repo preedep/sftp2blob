@@ -263,33 +263,18 @@ stream_file_to_blob() {
     connection_log=$(mktemp)
     full_command="$command $options -e \"$fetch_command\""
 
-    # Debug: Print the output of the command before splitting
+    # Execute the command and capture the output
+    output=$(eval "$full_command")
     echo "Debug: Full command output:"
-    eval "$full_command"
+    echo "$output"
 
-    # Explicitly print the command to be executed
-    echo "Executing command: $full_command"
-
-    if ! eval "$full_command" >"$connection_log" 2>&1; then
-        echo "Error: Failed to connect to the FTP/FTPS server or retrieve the file."
-        echo "Connection log:"
-        cat "$connection_log"
-        rm "$connection_log"
+    if [ -z "$output" ]; then
+        echo "Error: No data was returned by the command. Aborting."
         exit 1
     fi
 
-    echo "Connected successfully. Starting to fetch and upload the file..."
-
-    # Determine the total file size
-    total_size=$(eval "$full_command" | wc -c)
-
-    # If the total size is less than the chunk size, upload it as a single chunk
-    if [ "$total_size" -lt "$chunk_size" ]; then
-        chunk_size="$total_size"
-    fi
-
     # Stream the file in chunks and upload each chunk directly
-    while IFS= read -r -d '' chunk; do
+    echo "$output" | split -b "$chunk_size" -a 6 -d --filter='cat' | while IFS= read -r -d '' chunk; do
         if [ -z "$chunk" ]; then
             echo "Error: Encountered an empty chunk. Skipping..."
             continue
@@ -305,15 +290,9 @@ stream_file_to_blob() {
         # Print the chunk content (first 100 characters for brevity)
         echo "Debug: Chunk content (first 100 chars): ${chunk:0:100}"
 
-        # Print a message when a chunk is being uploaded
-        echo "Uploading chunk with block ID $BLOCK_ID and size $chunk_size_bytes bytes"
-
         # Upload the current chunk to Azure Blob Storage
         echo "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
-    done < <(eval "$full_command" | split -b "$chunk_size" -a 6 -d --filter='cat')
-
-    # Clean up the connection log
-    rm "$connection_log"
+    done
 
     # Create the block list XML
     BLOCK_LIST_XML="<BlockList>"
@@ -325,9 +304,6 @@ stream_file_to_blob() {
     # Commit the blocks to create the final blob
     echo "Committing blocks to finalize the blob..."
     commit_blocks_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_LIST_XML"
-
-    # Cleanup any remaining local chunk files (if any)
-    rm -f "${LOCAL_FILE_PATH}.chunk.*"
 
     echo "File transfer completed successfully."
 }

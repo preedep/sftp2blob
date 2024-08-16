@@ -275,6 +275,8 @@ stream_file_to_blob() {
 
     # Stream the file in chunks and upload each chunk directly
     echo "$output" | split -b "$chunk_size" -a 6 -d --filter='cat' | while IFS= read -r -d '' chunk; do
+        echo "Processing chunk..."
+
         if [ -z "$chunk" ]; then
             echo "Error: Encountered an empty chunk. Skipping..."
             continue

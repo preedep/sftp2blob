@@ -418,6 +418,17 @@ stream_file_to_blob_v2() {
                 break
             fi
         done
+
+        # Handle the case where the file size is exactly a multiple of the chunk size
+        if [ "$chunk_size_uploaded" -eq "$chunk_size" ]; then
+            chunk=$(dd bs=1 count=1 2>/dev/null)  # Check for any remaining data
+            if [ -n "$chunk" ]; then
+                BLOCK_ID=$(printf '%06d' $BLOCK_INDEX | base64)
+                echo "Uploading final tiny chunk with Block ID $BLOCK_ID..."
+                echo "<Latest>$BLOCK_ID</Latest>" >> "$block_list_file"
+                echo -n "$chunk" | upload_chunk_to_azure_blob "$access_token" "$storage_account" "$container_name" "$blob_name" "$BLOCK_ID"
+            fi
+        fi
     }
 
     if [ ! -f "$block_list_file" ]; then

@@ -247,8 +247,8 @@ stream_file_to_blob() {
 
     declare -a BLOCK_ID_LIST
     BLOCK_INDEX=0
-    block_list_file="/tmp/block_list.xml"
-    final_block_list_file="/tmp/final_block_list.xml"
+    block_list_file="block_list.xml"
+    final_block_list_file="final_block_list.xml"
 
     # Clean up old block list files if they exist
     rm -f "$block_list_file" "$final_block_list_file"

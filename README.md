@@ -268,7 +268,7 @@ new script: `sftp2blob_curl.sh`
     --password-secret FTP-PASSWORD \
     --identity <<client-id>> of managed identity
 ```
-#### Example for run Docker (Test with Docker)
+#### Example for run Docker (Development)
 ```bash
 docker stop sftp2blob-curl
 docker rm sftp2blob-curl

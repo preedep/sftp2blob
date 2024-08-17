@@ -4,8 +4,9 @@ FROM alpine:3.18
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Install required packages
+# Install required packages, including bash
 RUN apk add --no-cache \
+    bash \
     curl \
     jq \
     openssh-client \

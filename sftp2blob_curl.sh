@@ -247,8 +247,14 @@ stream_file_to_blob() {
 
     declare -a BLOCK_ID_LIST
     BLOCK_INDEX=0
-    block_list_file="block_list.xml"
-    final_block_list_file="final_block_list.xml"
+    block_list_file="/var/tmp/block_list.xml"
+    final_block_list_file="/var/tmp/final_block_list.xml"
+
+    # Ensure the directory is writable
+    if [ ! -w "$(dirname "$block_list_file")" ]; then
+        echo "Error: Directory $(dirname "$block_list_file") is not writable"
+        exit 1
+    fi
 
     # Clean up old block list files if they exist
     rm -f "$block_list_file" "$final_block_list_file"
@@ -273,15 +279,20 @@ stream_file_to_blob() {
 
     echo "Connecting to $SFTP_HOST via $PROTOCOL..."
     full_command="$command $options -e \"$fetch_command\""
-    echo "Running command: $full_command"
+    #echo "Running command: $full_command"
 
     eval "$full_command" 2>/dev/null | {
         total_size_uploaded=0
 
         while true; do
             # Read a chunk from the remote file
+            echo "Reading a chunk of data..."
             chunk=$(dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null)
             chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
+
+            if [ "$chunk_size_uploaded" -lt "$chunk_size" ]; then
+                echo "Warning: Chunk size read is smaller than expected: $chunk_size_uploaded bytes"
+            fi
 
             echo "Debug: Chunk size read: $chunk_size_uploaded bytes"
 

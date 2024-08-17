@@ -187,6 +187,7 @@ File transfer completed successfully.
 
 ```
 ## For Docker
+in-case connect to localhost use `host.docker.internal` instead of `localhost` 
 Build the Docker image
 ```bash
 docker build -t sftp2blob-img:latest .
@@ -195,7 +196,7 @@ docker build -t sftp2blob-img:latest .
 Run the Docker container (with cli arguments)
 ```bash
 docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
-    --host localhost \
+    --host host.docker.internal \
     --port 21 \
     --remote /upload/test.csv \
     --local test.csv \
@@ -210,7 +211,7 @@ docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
 Run the Docker container (with environment variables) #1
 ```bash
 docker run -it --rm --name sftp2blob sftp2blob-img:latest --protocol ftp \
-    -e SFTP_HOST=localhost \
+    -e SFTP_HOST=host.docker.internal \
     -e SFTP_PORT=21 \
     -e REMOTE_FILE_PATH=/upload/test.csv \
     -e LOCAL_FILE_PATH=test.csv \
@@ -267,20 +268,26 @@ new script: `sftp2blob_curl.sh`
     --password-secret FTP-PASSWORD \
     --identity <<client-id>> of managed identity
 ```
-#### Example for run Docker
+#### Example for run Docker (Test with Docker)
 ```bash
+docker stop sftp2blob-curl
+docker rm sftp2blob-curl
 docker run -it --rm --name sftp2blob-curl \
-    -e SFTP_HOST=localhost \
+    -v "$(pwd)":/var/tmp/ \
+    -e SFTP_HOST=host.docker.internal \
     -e SFTP_PORT=21 \
-    -e REMOTE_FILE_PATH=/upload/test.csv \
-    -e LOCAL_FILE_PATH=test.csv \
+    -e REMOTE_FILE_PATH=/upload/big1g.dat \
+    -e LOCAL_FILE_PATH=big1g.dat \
     -e AZURE_STORAGE_ACCOUNT=nickdevstorage003 \
     -e AZURE_CONTAINER_NAME=datas \
-    -e AZURE_BLOB_NAME=test.csv \
+    -e AZURE_BLOB_NAME=big1g.dat \
     -e KEY_VAULT_NAME=nickkvdev001 \
     -e SFTP_USERNAME_SECRET_NAME=FTP-USER \
     -e SFTP_PASSWORD_SECRET_NAME=FTP-PASSWORD \
     -e MANAGED_IDENTITY_CLIENT_ID=afc87ccf-6294-4ac7-9533-179fb67f6c8b \
-    sftp2blob-curl-img:latest --protocol ftp    
+    sftp2blob-curl-img:latest  --protocol ftp
+
+# View logs after the container exits
+docker logs sftp2blob-curl
     
 ```

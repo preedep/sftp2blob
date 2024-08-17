@@ -1,22 +1,23 @@
-# Use the official Alpine Linux as the base image
-FROM alpine:latest
+# Use an official Alpine as a parent image
+FROM alpine:3.18
 
-# Install required packages
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+# Install required packages, including bash
 RUN apk add --no-cache \
     bash \
+    curl \
+    jq \
     openssh-client \
     lftp \
-    ca-certificates \
-    jq \
-    curl
+    ca-certificates
 
-# Set the working directory inside the container
-
-# Copy the shell script into the container
-COPY sftp2blob_curl.sh /usr/local/bin/sftp2blob_curl.sh
+# Copy the script into the container at /usr/src/app/
+COPY sftp2blob_curl.sh .
 
 # Make the script executable
-RUN chmod +x /usr/local/bin/sftp2blob_curl.sh
+RUN chmod +x sftp2blob_curl.sh
 
-# Set the default command to execute the script
-ENTRYPOINT ["/usr/local/bin/sftp2blob_curl.sh"]
+# Set the entrypoint for the container to run the script
+ENTRYPOINT ["./sftp2blob_curl.sh"]

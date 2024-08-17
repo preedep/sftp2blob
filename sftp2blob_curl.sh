@@ -281,8 +281,12 @@ stream_file_to_blob() {
         while true; do
             # Read a chunk from the remote file
             echo "Reading a chunk of data..."
-            chunk=$(dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null)
+            chunk=$(timeout 10 dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null)
             chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
+
+            if [ "$chunk_size_uploaded" -lt "$chunk_size" ]; then
+                echo "Warning: Chunk size read is smaller than expected: $chunk_size_uploaded bytes"
+            fi
 
             echo "Debug: Chunk size read: $chunk_size_uploaded bytes"
 

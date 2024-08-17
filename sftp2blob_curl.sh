@@ -280,6 +280,7 @@ stream_file_to_blob() {
 
         while true; do
             # Read a chunk from the remote file
+            echo "Reading a chunk of data..."
             chunk=$(dd bs="$chunk_size" count=1 iflag=fullblock 2>/dev/null)
             chunk_size_uploaded=$(echo -n "$chunk" | wc -c)
 

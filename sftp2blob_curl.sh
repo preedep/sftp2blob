@@ -250,6 +250,12 @@ stream_file_to_blob() {
     block_list_file="/var/tmp/block_list.xml"
     final_block_list_file="/var/tmp/final_block_list.xml"
 
+    # Ensure the directory is writable
+    if [ ! -w "$(dirname "$block_list_file")" ]; then
+        echo "Error: Directory $(dirname "$block_list_file") is not writable"
+        exit 1
+    fi
+
     # Clean up old block list files if they exist
     rm -f "$block_list_file" "$final_block_list_file"
 
